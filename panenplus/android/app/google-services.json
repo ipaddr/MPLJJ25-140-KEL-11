@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "68915102182",
+    "project_id": "panenplus-1e1c4",
+    "storage_bucket": "panenplus-1e1c4.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:68915102182:android:f851639aa38bc0fcdb9627",
+        "android_client_info": {
+          "package_name": "com.example.panenplus"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCP7iWXObPe9ZQXvG1sK_WDjObKpnYinGA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

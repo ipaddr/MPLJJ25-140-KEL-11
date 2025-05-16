@@ -1,10 +1,14 @@
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
+
 import 'package:flutter/material.dart';
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/upload_product_screen.dart';
 import 'screens/cart_screen.dart';
 
-void main() {
+void main() async {
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   runApp(PanenPlusApp());
 }
 
@@ -13,9 +17,7 @@ class PanenPlusApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'PanenPlus',
-      theme: ThemeData(
-        primarySwatch: Colors.green,
-      ),
+      theme: ThemeData(primarySwatch: Colors.green),
       home: LoginScreen(),
     );
   }
@@ -49,14 +51,8 @@ class _MainNavigationState extends State<MainNavigation> {
         selectedItemColor: Colors.green,
         onTap: _onItemTapped,
         items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.store),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.add_box),
-            label: 'Upload',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.store), label: 'Home'),
+          BottomNavigationBarItem(icon: Icon(Icons.add_box), label: 'Upload'),
           BottomNavigationBarItem(
             icon: Icon(Icons.shopping_cart),
             label: 'Cart',
