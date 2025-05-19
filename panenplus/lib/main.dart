@@ -4,10 +4,12 @@ import 'firebase_options.dart';
 import 'package:flutter/material.dart';
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
+import 'screens/register_screen.dart';
 import 'screens/upload_product_screen.dart';
 import 'screens/cart_screen.dart';
 
 void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   runApp(PanenPlusApp());
 }
@@ -18,7 +20,12 @@ class PanenPlusApp extends StatelessWidget {
     return MaterialApp(
       title: 'PanenPlus',
       theme: ThemeData(primarySwatch: Colors.green),
-      home: LoginScreen(),
+      initialRoute: '/',
+      routes: {
+        '/': (context) => LoginScreen(),
+        '/register': (context) => RegisterScreen(),
+        '/main': (context) => MainNavigation(),
+      },
     );
   }
 }
@@ -30,6 +37,7 @@ class MainNavigation extends StatefulWidget {
 
 class _MainNavigationState extends State<MainNavigation> {
   int _selectedIndex = 0;
+
   final List<Widget> _screens = [
     HomeScreen(),
     UploadProductScreen(),
