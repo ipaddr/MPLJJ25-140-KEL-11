@@ -1,185 +1,199 @@
 import 'package:flutter/material.dart';
 
 class HomeScreen extends StatelessWidget {
+  const HomeScreen({Key? key}) : super(key: key);
+
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
+    return DefaultTabController(
+      length: 2,
       child: Scaffold(
-        backgroundColor: const Color(0xffC5DDBF),
-        body: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      const CircleAvatar(
-                        backgroundImage: AssetImage('assets/profile.png'),
-                        radius: 24,
-                      ),
-                      const SizedBox(width: 12),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: const [
-                          Text(
-                            'Hai, Reno 👋',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          Text(
-                            'Saldo: Rp120.000',
-                            style: TextStyle(color: Colors.black54),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.notifications),
-                    onPressed: () {},
-                  ),
-                ],
+        appBar: AppBar(
+          backgroundColor: const Color(0xffC5DDBF),
+          title: const Text(
+            'PanenPlus',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 24,
+              color: Color.fromARGB(255, 255, 255, 255),
+            ),
+          ),
+          actions: const [
+            Padding(
+              padding: EdgeInsets.only(right: 16),
+              child: Icon(
+                Icons.notifications_none,
+                color: Color.fromARGB(255, 0, 0, 0),
               ),
-              const SizedBox(height: 20),
-
-              // Banner promo
-              Container(
-                height: 140,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
-                  color: Colors.green[200],
-                  image: const DecorationImage(
-                    image: AssetImage('assets/banner.jpg'),
-                    fit: BoxFit.cover,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              // Menu
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _MenuIcon(icon: Icons.shopping_basket, label: 'Produk'),
-                  _MenuIcon(icon: Icons.store, label: 'Toko'),
-                  _MenuIcon(icon: Icons.history, label: 'Riwayat'),
-                ],
-              ),
-              const SizedBox(height: 20),
-
-              // Produk rekomendasi
-              const Text(
-                'Produk Unggulan',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                height: 180,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  children: [
-                    _ProductCard(
-                      image: 'assets/produk1.jpg',
-                      title: 'Tomat Segar',
-                      price: 'Rp15.000/kg',
-                    ),
-                    _ProductCard(
-                      image: 'assets/produk2.jpg',
-                      title: 'Cabai Merah',
-                      price: 'Rp30.000/kg',
-                    ),
-                    _ProductCard(
-                      image: 'assets/produk3.jpg',
-                      title: 'Sayur Mix',
-                      price: 'Rp20.000/paket',
-                    ),
-                  ],
-                ),
-              ),
-            ],
+            ),
+          ],
+          bottom: const TabBar(
+            indicatorColor: Color.fromARGB(255, 55, 94, 57),
+            labelColor: Color.fromARGB(255, 0, 0, 0),
+            unselectedLabelColor: Colors.black54,
+            tabs: [Tab(text: 'Bisnis'), Tab(text: 'Mart')],
           ),
         ),
+        body: TabBarView(
+          children: [
+            _buildBisnisTab(context),
+            const Center(child: Text('Mart Page (Under development)')),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBisnisTab(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: const [
+              _IconMenu(icon: Icons.search, label: 'Cari'),
+              _IconMenu(icon: Icons.shopping_cart, label: 'Keranjang'),
+              _IconMenu(icon: Icons.list_alt, label: 'Pesanan'),
+              _IconMenu(icon: Icons.store, label: 'Toko Saya'),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color.fromARGB(255, 255, 243, 216),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Text.rich(
+              TextSpan(
+                children: [
+                  TextSpan(
+                    text: 'Selamat siang, NL!\n',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Color.fromARGB(255, 0, 0, 0),
+                      fontSize: 16,
+                    ),
+                  ),
+                  TextSpan(
+                    text:
+                        'hasil panen langsung dari kebun petani lokal kami. Dipanen setiap pagi untuk menjaga kesegaran dan kandungan nutrisinya. Tanaman tumbuh tanpa pestisida kimia, menggunakan pupuk organik alami, dan diproses secara higienis.',
+                    style: TextStyle(fontSize: 14),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            height: 140,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: [
+                _ImageCard(imagePath: 'https://i.imgur.com/8KmltL.jpg'),
+                _ImageCard(imagePath: 'https://i.imgur.com/2yafwb.jpg'),
+                _ImageCard(imagePath: 'https://i.imgur.com/hXaUcsb.jpg'),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: const [
+              Text(
+                'Upload Produk ke PanenPlus',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+              Icon(Icons.arrow_forward_ios, size: 16),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: const [
+              _CategoryCard(label: 'Makanan pokok'),
+              _CategoryCard(label: 'Sayuran'),
+              _CategoryCard(label: 'Buah-buahan'),
+            ],
+          ),
+        ],
       ),
     );
   }
 }
 
-class _MenuIcon extends StatelessWidget {
+class _IconMenu extends StatelessWidget {
   final IconData icon;
   final String label;
 
-  const _MenuIcon({required this.icon, required this.label});
+  const _IconMenu({required this.icon, required this.label});
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        CircleAvatar(
-          backgroundColor: Colors.white,
-          radius: 28,
-          child: Icon(icon, size: 28, color: Colors.green[800]),
-        ),
-        const SizedBox(height: 6),
-        Text(label, style: const TextStyle(fontSize: 14)),
+        Icon(icon, size: 30, color: const Color.fromARGB(255, 255, 255, 255)),
+        const SizedBox(height: 4),
+        Text(label, style: const TextStyle(fontSize: 12)),
       ],
     );
   }
 }
 
-class _ProductCard extends StatelessWidget {
-  final String image;
-  final String title;
-  final String price;
+class _ImageCard extends StatelessWidget {
+  final String imagePath;
 
-  const _ProductCard({
-    required this.image,
-    required this.title,
-    required this.price,
-  });
+  const _ImageCard({required this.imagePath});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 140,
       margin: const EdgeInsets.only(right: 12),
+      width: 180,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
+        image: DecorationImage(
+          image: NetworkImage(imagePath),
+          fit: BoxFit.cover,
+        ),
+      ),
+    );
+  }
+}
+
+class _CategoryCard extends StatelessWidget {
+  final String label;
+
+  const _CategoryCard({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 100,
+      height: 100,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
         color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: const Color.fromARGB(31, 66, 61, 61),
+            blurRadius: 4,
+            offset: Offset(2, 2),
+          ),
+        ],
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          ClipRRect(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-            child: Image.asset(
-              image,
-              height: 100,
-              width: double.infinity,
-              fit: BoxFit.cover,
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(8),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(price, style: const TextStyle(color: Colors.black54)),
-              ],
-            ),
+          const Icon(Icons.rice_bowl, color: Color.fromARGB(255, 94, 79, 79)),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 12),
+            textAlign: TextAlign.center,
           ),
         ],
       ),

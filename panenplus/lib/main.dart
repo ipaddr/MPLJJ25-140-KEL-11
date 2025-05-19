@@ -40,8 +40,8 @@ class _MainNavigationState extends State<MainNavigation> {
 
   final List<Widget> _screens = [
     HomeScreen(),
-    UploadProductScreen(),
     CartScreen(),
+    UploadProductScreen(),
   ];
 
   void _onItemTapped(int index) {
@@ -59,12 +59,12 @@ class _MainNavigationState extends State<MainNavigation> {
         selectedItemColor: Colors.green,
         onTap: _onItemTapped,
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.store), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.add_box), label: 'Upload'),
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
           BottomNavigationBarItem(
             icon: Icon(Icons.shopping_cart),
-            label: 'Cart',
+            label: 'Keranjang',
           ),
+          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Akun'),
         ],
       ),
     );
