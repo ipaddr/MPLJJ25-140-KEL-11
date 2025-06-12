@@ -1,0 +1,2 @@
+C:/Users/user/Downloads/panen6_12laudya/android/app/.cxx/Debug/725h15z5/x86/CMakeFiles/edit_cache.dir
+C:/Users/user/Downloads/panen6_12laudya/android/app/.cxx/Debug/725h15z5/x86/CMakeFiles/rebuild_cache.dir
