@@ -18,23 +18,6 @@ class MartTab extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // Info Toko
-        Container(
-          color: const Color(0xfff0f7ec),
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: const [
-              Icon(Icons.favorite_border, color: Colors.black),
-              SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Toko Saya\nToko menjual makanan pokok, sayuran, buah-buahan...',
-                  style: TextStyle(fontSize: 12),
-                ),
-              ),
-            ],
-          ),
-        ),
         // mart_screen.dart
         GestureDetector(
           onTap: () {
@@ -44,14 +27,17 @@ class MartTab extends StatelessWidget {
             );
           },
           child: Container(
-            color: Color(0xFFA9CBB7),
-            padding: const EdgeInsets.all(16),
+            color: const Color(0xfff0f7ec),
+            padding: const EdgeInsets.all(12),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: const [
-                Text(
-                  'Toko Saya',
-                  style: TextStyle(color: Colors.white, fontSize: 20),
+                Icon(Icons.favorite_border, color: Colors.black),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Toko Saya\nToko menjual makanan pokok, sayuran, buah-buahan...',
+                    style: TextStyle(fontSize: 12),
+                  ),
                 ),
                 Icon(Icons.arrow_forward_ios, color: Colors.white),
               ],
