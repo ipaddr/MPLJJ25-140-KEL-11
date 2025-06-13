@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'mart_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -34,12 +35,7 @@ class HomeScreen extends StatelessWidget {
             tabs: [Tab(text: 'Bisnis'), Tab(text: 'Mart')],
           ),
         ),
-        body: TabBarView(
-          children: [
-            _buildBisnisTab(context),
-            const Center(child: Text('Mart Page (Under development)')),
-          ],
-        ),
+        body: TabBarView(children: [_buildBisnisTab(context), const MartTab()]),
       ),
     );
   }
@@ -79,7 +75,7 @@ class HomeScreen extends StatelessWidget {
                   ),
                   TextSpan(
                     text:
-                        'hasil panen langsung dari kebun petani lokal kami. Dipanen setiap pagi untuk menjaga kesegaran dan kandungan nutrisinya. Tanaman tumbuh tanpa pestisida kimia, menggunakan pupuk organik alami, dan diproses secara higienis.',
+                        'Hasil panen langsung dari kebun petani lokal kami. Dipanen setiap pagi untuk menjaga kesegaran dan kandungan nutrisinya. Tanaman tumbuh tanpa pestisida kimia, menggunakan pupuk organik alami, dan diproses secara higienis.',
                     style: TextStyle(fontSize: 14),
                   ),
                 ],
@@ -92,9 +88,9 @@ class HomeScreen extends StatelessWidget {
             child: ListView(
               scrollDirection: Axis.horizontal,
               children: [
-                _ImageCard(imagePath: 'https://i.imgur.com/8KmltL.jpg'),
-                _ImageCard(imagePath: 'https://i.imgur.com/2yafwb.jpg'),
-                _ImageCard(imagePath: 'https://i.imgur.com/hXaUcsb.jpg'),
+                _ImageCard(imagePath: 'assets/1.png'),
+                _ImageCard(imagePath: 'assets/2.png'),
+                _ImageCard(imagePath: 'assets/3.png'),
               ],
             ),
           ),
