@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'toko_saya_screen.dart';
 import 'detail_toko_screen.dart';
+import 'add_to_cart_screen.dart';
 
 class MartTab extends StatelessWidget {
   const MartTab({Key? key}) : super(key: key);
@@ -135,12 +136,46 @@ class _MartProductCard extends StatelessWidget {
                   const SizedBox(height: 4),
 
                   Row(
-                    children: const [
-                      Icon(Icons.add_circle_outline, size: 20),
-                      SizedBox(width: 4),
-                      Text("0"),
-                      SizedBox(width: 12),
-                      Icon(Icons.favorite_border, size: 20),
+                    children: [
+                      IconButton(
+                        // Ubah menjadi IconButton
+                        icon: const Icon(
+                          Icons.add_circle_outline,
+                          size: 20,
+                          color: Colors.green,
+                        ), // Warna ikon hijau
+                        onPressed: () {
+                          // Navigasi ke AddToCartScreen saat tombol tambah diklik
+                          Navigator.pushNamed(
+                            context,
+                            '/add_to_cart',
+                            arguments: {
+                              'name': name,
+                              'price': price,
+                              'image': image,
+                              // Jika ada productId dari Firestore, teruskan juga
+                              // 'productId': productId,
+                            },
+                          );
+                        },
+                      ),
+                      const SizedBox(width: 4),
+                      const Text(
+                        "0",
+                      ), // Ini akan menjadi quantity di masa depan
+                      const SizedBox(width: 12),
+                      IconButton(
+                        // Ubah menjadi IconButton
+                        icon: const Icon(Icons.favorite_border, size: 20),
+                        onPressed: () {
+                          // TODO: Implementasi fitur favorit
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Menambahkan $name ke favorit!'),
+                            ),
+                          );
+                        },
+                      ),
                     ],
                   ),
                   const SizedBox(height: 4),

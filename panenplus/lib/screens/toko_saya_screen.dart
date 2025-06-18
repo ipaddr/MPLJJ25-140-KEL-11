@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'mart_screen.dart'; // pastikan file ini ada
+import 'mart_screen.dart';
+import 'unggah_produk_screen.dart';
 
 class TokoSayaScreen extends StatelessWidget {
   const TokoSayaScreen({super.key});
@@ -9,7 +10,7 @@ class TokoSayaScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        backgroundColor: const Color(0xFFA9CBB7),
+        backgroundColor: const Color(0xFFC7D9C7),
         title: const Text('Toko Saya', style: TextStyle(color: Colors.white)),
         centerTitle: true,
         leading: IconButton(
@@ -130,7 +131,14 @@ class TokoSayaScreen extends StatelessWidget {
                   const SizedBox(height: 20),
                   Center(
                     child: ElevatedButton.icon(
-                      onPressed: () {},
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const UnggahProdukScreen(),
+                          ),
+                        );
+                      },
                       icon: const Icon(Icons.add),
                       label: const Text("Edit Etalase"),
                       style: ElevatedButton.styleFrom(

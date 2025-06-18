@@ -1,7 +1,102 @@
+// lib/screens/register_screen.dart
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart'; // Import Firebase Auth
 
-class RegisterScreen extends StatelessWidget {
+class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
+
+  @override
+  State<RegisterScreen> createState() => _RegisterScreenState();
+}
+
+class _RegisterScreenState extends State<RegisterScreen> {
+  final TextEditingController usernameController = TextEditingController();
+  final TextEditingController phoneController = TextEditingController();
+  final TextEditingController emailController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
+  final TextEditingController confirmPasswordController =
+      TextEditingController();
+  bool _isLoading = false;
+
+  Future<void> _register() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    if (passwordController.text.trim() !=
+        confirmPasswordController.text.trim()) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Kata sandi tidak cocok.')),
+        );
+      }
+      setState(() {
+        _isLoading = false;
+      });
+      return;
+    }
+
+    try {
+      // Membuat pengguna baru dengan email dan password
+      UserCredential userCredential = await FirebaseAuth.instance
+          .createUserWithEmailAndPassword(
+            email: emailController.text.trim(),
+            password: passwordController.text.trim(),
+          );
+
+      // Opsional: Perbarui display name pengguna
+      await userCredential.user?.updateDisplayName(
+        usernameController.text.trim(),
+      );
+
+      // Jika berhasil, navigasi kembali ke halaman login atau ke halaman utama
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Pendaftaran berhasil! Silakan masuk.')),
+        );
+        Navigator.pushReplacementNamed(
+          context,
+          '/',
+        ); // Kembali ke halaman login
+      }
+    } on FirebaseAuthException catch (e) {
+      String message;
+      if (e.code == 'weak-password') {
+        message = 'Kata sandi terlalu lemah.';
+      } else if (e.code == 'email-already-in-use') {
+        message = 'Email ini sudah digunakan oleh akun lain.';
+      } else if (e.code == 'invalid-email') {
+        message = 'Format email tidak valid.';
+      } else {
+        message = 'Terjadi kesalahan saat pendaftaran: ${e.message}';
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(message)));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Terjadi kesalahan tak terduga: $e')),
+        );
+      }
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    usernameController.dispose();
+    phoneController.dispose();
+    emailController.dispose();
+    passwordController.dispose();
+    confirmPasswordController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -39,10 +134,20 @@ class RegisterScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 16),
-                Image.asset('assets/logo.png', height: 100),
+                Image.asset(
+                  'assets/logo.png',
+                  height: 100,
+                  errorBuilder:
+                      (context, error, stackTrace) => const Icon(
+                        Icons.grass,
+                        size: 100,
+                        color: Colors.white,
+                      ),
+                ),
                 const SizedBox(height: 32),
-                const TextField(
-                  decoration: InputDecoration(
+                TextField(
+                  controller: usernameController,
+                  decoration: const InputDecoration(
                     hintText: 'Username',
                     filled: true,
                     fillColor: Colors.white,
@@ -52,8 +157,10 @@ class RegisterScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 16),
-                const TextField(
-                  decoration: InputDecoration(
+                TextField(
+                  controller: phoneController,
+                  keyboardType: TextInputType.phone,
+                  decoration: const InputDecoration(
                     hintText: 'Nomor Telepon',
                     filled: true,
                     fillColor: Colors.white,
@@ -63,8 +170,10 @@ class RegisterScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 16),
-                const TextField(
-                  decoration: InputDecoration(
+                TextField(
+                  controller: emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: const InputDecoration(
                     hintText: 'Email',
                     filled: true,
                     fillColor: Colors.white,
@@ -74,9 +183,10 @@ class RegisterScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 16),
-                const TextField(
+                TextField(
+                  controller: passwordController,
                   obscureText: true,
-                  decoration: InputDecoration(
+                  decoration: const InputDecoration(
                     hintText: 'Kata Sandi',
                     filled: true,
                     fillColor: Colors.white,
@@ -86,9 +196,10 @@ class RegisterScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 16),
-                const TextField(
+                TextField(
+                  controller: confirmPasswordController,
                   obscureText: true,
-                  decoration: InputDecoration(
+                  decoration: const InputDecoration(
                     hintText: 'Konfirmasi Kata Sandi',
                     filled: true,
                     fillColor: Colors.white,
@@ -98,22 +209,24 @@ class RegisterScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 32),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFEADCA6),
-                    minimumSize: const Size(double.infinity, 50),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                _isLoading
+                    ? const CircularProgressIndicator()
+                    : ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(
+                          0xFFEADCA6,
+                        ), // Warna dari desain Anda
+                        minimumSize: const Size(double.infinity, 50),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      onPressed: _register, // Panggil fungsi _register
+                      child: const Text(
+                        "DAFTAR",
+                        style: TextStyle(fontSize: 18, color: Colors.black),
+                      ),
                     ),
-                  ),
-                  onPressed: () {
-                    Navigator.pushReplacementNamed(context, '/');
-                  },
-                  child: const Text(
-                    "DAFTAR",
-                    style: TextStyle(fontSize: 18, color: Colors.black),
-                  ),
-                ),
               ],
             ),
           ),

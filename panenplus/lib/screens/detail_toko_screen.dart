@@ -9,7 +9,7 @@ class DetailTokoScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        backgroundColor: const Color(0xFFA9CBB7),
+        backgroundColor: const Color(0xffC5DDBF),
         title: const Text('Toko Saya', style: TextStyle(color: Colors.white)),
         centerTitle: true,
         leading: IconButton(

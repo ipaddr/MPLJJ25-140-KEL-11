@@ -10,7 +10,7 @@ dependencies:
   flutter:
     sdk: flutter
   firebase_core: ^2.32.0
-  firebase_auth: ^4.17.3
+  firebase_auth: ^4.16.0
 
 dev_dependencies:
   flutter_test:
@@ -24,3 +24,14 @@ flutter:
     - assets/logo.png
     - assets/google.png
     - assets/facebook.png
+    - assets/1.png
+    - assets/2.png
+    - assets/3.png
+    - assets/beras.png
+    - assets/jagung.png
+    - assets/kentang.png
+    - assets/pakcoy.png
+    - assets/tomat.png
+    - assets/wortel.png
+
+
