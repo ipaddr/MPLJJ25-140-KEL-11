@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:panenplus/services/firestore_service.dart'; // Import FirestoreService
-import 'upload_product_screen.dart'; // Untuk edit/tambah etalase
-import 'detail_toko_screen.dart'; // Untuk melihat detail produk
 
 class TokoSayaScreen extends StatefulWidget {
   const TokoSayaScreen({super.key});

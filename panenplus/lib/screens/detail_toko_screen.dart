@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:panenplus/services/firestore_service.dart'; // Import FirestoreService
-import 'toko_saya_screen.dart'; // Untuk navigasi ke halaman toko penjual
 
 class DetailTokoScreen extends StatefulWidget {
   const DetailTokoScreen({super.key});
