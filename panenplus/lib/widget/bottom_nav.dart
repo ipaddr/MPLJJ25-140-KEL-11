@@ -20,7 +20,7 @@ class BottomNavBar extends StatelessWidget {
         destination = const PesanScreen();
         break;
       case 2:
-        destination = const AkunScreen();
+        destination = const AkunPage();
         break;
       default:
         destination = const HomeScreen();

@@ -1,4 +1,5 @@
 import 'package:firebase_core/firebase_core.dart';
+import 'package:panenplus/screens/upload_product_screen.dart';
 import 'firebase_options.dart';
 
 import 'package:flutter/material.dart';
@@ -6,11 +7,12 @@ import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/pesan_screen.dart';
+import 'screens/add_to_cart_screen.dart';
 import 'screens/cart_screen.dart';
 import 'screens/payment_screen.dart';
 import 'screens/toko_saya_screen.dart';
 import 'screens/transaction_success_screen.dart';
-import 'pages/akun_page.dart';
+import 'screens/akun_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -30,7 +32,9 @@ class PanenPlusApp extends StatelessWidget {
         '/register': (context) => RegisterScreen(),
         '/main': (context) => MainNavigation(),
         '/toko_saya': (context) => const TokoSayaScreen(),
-        '/add_to_cart': (context) => const CartScreen(),
+        '/upload': (context) => const UploadProductScreen(),
+        '/add_to_cart': (context) => const AddToCartScreen(),
+        '/addToCart': (context) => const CartScreen(),
         '/payment': (context) => const PaymentScreen(),
         '/transaction_success': (context) => const TransactionSuccessScreen(),
       },
@@ -46,7 +50,7 @@ class MainNavigation extends StatefulWidget {
 class _MainNavigationState extends State<MainNavigation> {
   int _selectedIndex = 0;
 
-  final List<Widget> _screens = [HomeScreen(), PesanScreen(), AkunPage()];
+  final List<Widget> _screens = [HomeScreen(), CartScreen(), AkunPage()];
 
   void _onItemTapped(int index) {
     setState(() {
@@ -64,7 +68,10 @@ class _MainNavigationState extends State<MainNavigation> {
         onTap: _onItemTapped,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.mail), label: 'Pesan'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.shopping_cart_checkout),
+            label: 'Keranjang',
+          ),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Akun'),
         ],
       ),

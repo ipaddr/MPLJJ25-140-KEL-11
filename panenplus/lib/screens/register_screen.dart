@@ -1,6 +1,7 @@
 // lib/screens/register_screen.dart
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart'; // Import Firebase Auth
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:panenplus/services/firestore_service.dart'; // Import FirestoreService
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -17,6 +18,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final TextEditingController confirmPasswordController =
       TextEditingController();
   bool _isLoading = false;
+  final FirestoreService _firestoreService =
+      FirestoreService(); // Inisialisasi service
 
   Future<void> _register() async {
     setState(() {
@@ -37,19 +40,27 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
 
     try {
-      // Membuat pengguna baru dengan email dan password
       UserCredential userCredential = await FirebaseAuth.instance
           .createUserWithEmailAndPassword(
             email: emailController.text.trim(),
             password: passwordController.text.trim(),
           );
 
-      // Opsional: Perbarui display name pengguna
-      await userCredential.user?.updateDisplayName(
-        usernameController.text.trim(),
-      );
+      // Simpan data tambahan pengguna ke Firestore menggunakan service
+      if (userCredential.user != null) {
+        await _firestoreService.saveNewUser(
+          userCredential.user!.uid,
+          usernameController.text.trim(),
+          emailController.text.trim(),
+          phoneController.text.trim(),
+        );
 
-      // Jika berhasil, navigasi kembali ke halaman login atau ke halaman utama
+        // Opsional: Perbarui display name pengguna di Firebase Auth
+        await userCredential.user?.updateDisplayName(
+          usernameController.text.trim(),
+        );
+      }
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Pendaftaran berhasil! Silakan masuk.')),
@@ -100,6 +111,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // ... (UI code yang sama seperti yang terakhir Anda miliki)
+    // Saya tidak menyertakan seluruh kode UI di sini untuk mempersingkat,
+    // gunakan UI dari file register_screen.dart Anda yang sudah ada.
     return Scaffold(
       backgroundColor: const Color(0xffC5DDBF),
       body: Padding(
@@ -213,15 +227,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ? const CircularProgressIndicator()
                     : ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(
-                          0xFFEADCA6,
-                        ), // Warna dari desain Anda
+                        backgroundColor: const Color(0xFFEADCA6),
                         minimumSize: const Size(double.infinity, 50),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      onPressed: _register, // Panggil fungsi _register
+                      onPressed: _register,
                       child: const Text(
                         "DAFTAR",
                         style: TextStyle(fontSize: 18, color: Colors.black),

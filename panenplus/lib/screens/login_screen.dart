@@ -80,7 +80,7 @@ class _LoginScreenState extends State<LoginScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              const SizedBox(height: 110),
+              const SizedBox(height: 100),
 
               const SizedBox(height: 16),
               // Menggunakan asset/logo.png yang Anda gunakan

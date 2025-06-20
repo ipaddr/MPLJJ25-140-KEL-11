@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'mart_screen.dart';
+import 'mart_screen.dart'; // Pastikan ini diimpor
 //import 'notifications_screen.dart';
 //import 'orders_screen.dart';
 import 'toko_saya_screen.dart';
-import 'unggah_produk_screen.dart';
-import 'cart_screen.dart'; // Import cart_screen.dart untuk navigasi ke Keranjang
+import 'upload_product_screen.dart';
+import 'cart_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -14,68 +14,46 @@ class HomeScreen extends StatelessWidget {
     return DefaultTabController(
       length: 2,
       child: Scaffold(
-        backgroundColor:
-            Colors.grey[50], // Sedikit off-white untuk background keseluruhan
-        // AppBar kustom agar sesuai dengan desain PanenPlus di Dashboard.png
+        backgroundColor: Colors.grey[50],
         appBar: PreferredSize(
-          // Tinggi PreferredSize yang disesuaikan
-          // kToolbarHeight adalah tinggi default AppBar (56.0)
-          // kTextTabBarHeight adalah tinggi default TabBar (48.0)
-          // Menambahkan sedikit extra padding (misal 10.0 atau 16.0) untuk visual separation
           preferredSize: const Size.fromHeight(
             kToolbarHeight + kTextTabBarHeight + 16.0,
           ),
           child: AppBar(
-            backgroundColor: const Color(
-              0xFFC7D9C7,
-            ), // Warna AppBar dari Dashboard.png
-            elevation: 0, // Tanpa bayangan
-            automaticallyImplyLeading:
-                false, // Jangan tampilkan tombol back default
+            backgroundColor: const Color(0xFFCDE2C4),
+            elevation: 0,
+            automaticallyImplyLeading: false,
             flexibleSpace: Padding(
-              // Padding atas disesuaikan untuk memperhitungkan status bar
-              // dan memberikan ruang yang lebih baik
               padding: EdgeInsets.only(
-                top:
-                    MediaQuery.of(
-                      context,
-                    ).padding.top, // Tambahkan padding.top dari sistem
+                top: MediaQuery.of(context).padding.top + 8.0,
                 left: 16.0,
                 right: 16.0,
-                bottom: 8.0, // Jarak ke TabBar
+                bottom: 8.0,
               ),
               child: Column(
-                // Gunakan Column untuk menata logo dan TabBar
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      // Menggunakan Image.asset untuk logo teks PanenPlus agar sesuai dengan gambar
                       Image.asset(
-                        'assets/logo.png', // Pastikan path ini benar di assets Anda
-                        height: 110, // Sesuaikan tinggi sesuai gambar
+                        'assets/images/panenplus_logo_text.png',
+                        height: 35,
                         errorBuilder:
                             (context, error, stackTrace) => const Text(
-                              'PanenPlus', // Fallback text jika gambar tidak ditemukan
+                              'PanenPlus',
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 24,
-                                color: Color.fromARGB(
-                                  255,
-                                  40,
-                                  47,
-                                  36,
-                                ), // Warna hijau gelap jika fallback
+                                color: Color(0xFF558B2F),
                               ),
                             ),
                       ),
+                      const Spacer(),
                       IconButton(
                         icon: const Icon(
                           Icons.notifications_none,
-                          color: Color(
-                            0xFF8BC34A,
-                          ), // Warna hijau sedikit lebih terang untuk ikon notifikasi
+                          color: Color(0xFF8BC34A),
                         ),
                         onPressed: () {
                           Navigator.pushNamed(context, '/notifications');
@@ -83,33 +61,21 @@ class HomeScreen extends StatelessWidget {
                       ),
                     ],
                   ),
-                  // TabBar diletakkan di sini, di bagian bawah Column flexibleSpace
-                  // Sudah ada di dalam AppBar.bottom, jadi tidak perlu di sini lagi
-                  // TabBar ini akan diganti dengan yang di AppBar.bottom
                 ],
               ),
             ),
             bottom: const TabBar(
-              // TabBar ini yang akan ditampilkan
-              indicatorColor: Color.fromARGB(
-                255,
-                55,
-                94,
-                57,
-              ), // Warna indikator dari Anda
-              labelColor: Color.fromARGB(
-                255,
-                0,
-                0,
-                0,
-              ), // Warna label yang dipilih
-              unselectedLabelColor:
-                  Colors.black54, // Warna label yang tidak dipilih
+              indicatorColor: Color.fromARGB(255, 55, 94, 57),
+              labelColor: Color.fromARGB(255, 0, 0, 0),
+              unselectedLabelColor: Colors.black54,
               tabs: [Tab(text: 'Bisnis'), Tab(text: 'Mart')],
             ),
           ),
         ),
-        body: TabBarView(children: [_buildBisnisTab(context), const MartTab()]),
+        body: TabBarView(
+          // HAPUS 'const' DI SINI SAAT MEMANGGIL MartTab()
+          children: [_buildBisnisTab(context), MartTab()],
+        ),
       ),
     );
   }
@@ -120,7 +86,6 @@ class HomeScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Baris Menu Ikon (Cari, Keranjang, Pesanan, Toko Saya)
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
@@ -134,17 +99,14 @@ class HomeScreen extends StatelessWidget {
                     ),
                   );
                 },
-                iconColor: const Color(0xFF558B2F), // Hijau gelap
-                backgroundColor: Colors.white, // Background putih
+                iconColor: const Color(0xFF558B2F),
+                backgroundColor: Colors.white,
               ),
               _IconMenu(
                 icon: Icons.shopping_cart,
                 label: 'Keranjang',
                 onTap: () {
-                  Navigator.pushNamed(
-                    context,
-                    '/cart',
-                  ); // Navigasi ke CartScreen
+                  Navigator.pushNamed(context, '/addToCart');
                 },
                 iconColor: const Color(0xFF558B2F),
                 backgroundColor: Colors.white,
@@ -153,10 +115,7 @@ class HomeScreen extends StatelessWidget {
                 icon: Icons.list_alt,
                 label: 'Pesanan',
                 onTap: () {
-                  Navigator.pushNamed(
-                    context,
-                    '/orders',
-                  ); // Navigasi ke OrdersScreen
+                  Navigator.pushNamed(context, '/orders');
                 },
                 iconColor: const Color(0xFF558B2F),
                 backgroundColor: Colors.white,
@@ -165,10 +124,7 @@ class HomeScreen extends StatelessWidget {
                 icon: Icons.store,
                 label: 'Toko Saya',
                 onTap: () {
-                  Navigator.pushNamed(
-                    context,
-                    '/toko_saya',
-                  ); // Navigasi ke TokoSayaScreen
+                  Navigator.pushNamed(context, '/toko_saya');
                 },
                 iconColor: const Color(0xFF558B2F),
                 backgroundColor: Colors.white,
@@ -176,16 +132,11 @@ class HomeScreen extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-
-          // Banner "Selamat siang, NL!"
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: const Color(
-                0xFFFFF4D5,
-              ), // Warna kuning sangat pucat, mendekati off-white di gambar
+              color: const Color(0xFFFDFCE9),
               borderRadius: BorderRadius.circular(12),
-              // Tambahkan shadow halus
               boxShadow: [
                 BoxShadow(
                   color: Colors.grey.withOpacity(0.1),
@@ -216,16 +167,13 @@ class HomeScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-
-          // Horizontal Image Cards (Promo/Banner)
           SizedBox(
             height: 140,
             child: ListView(
               scrollDirection: Axis.horizontal,
               children: [
                 _ImageCard(
-                  imagePath:
-                      'assets/1.png', // Pastikan path ini benar di assets Anda
+                  imagePath: 'assets/1.png',
                   onTap: () {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
@@ -264,14 +212,9 @@ class HomeScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-
-          // "Upload Produk ke PanenPlus" Section
           GestureDetector(
             onTap: () {
-              Navigator.pushNamed(
-                context,
-                '/upload',
-              ); // Navigasi ke halaman Upload
+              Navigator.pushNamed(context, '/upload');
             },
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -285,8 +228,6 @@ class HomeScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-
-          // Category Cards
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
@@ -301,7 +242,8 @@ class HomeScreen extends StatelessWidget {
                     ),
                   );
                 },
-                icon: Icons.rice_bowl, // Fallback icon jika gambar tidak ada
+                imagePath: 'assets/makanan_pokok.png',
+                icon: Icons.rice_bowl,
               ),
               _CategoryCard(
                 label: 'Sayuran',
@@ -312,7 +254,8 @@ class HomeScreen extends StatelessWidget {
                     ),
                   );
                 },
-                icon: Icons.local_florist, // Fallback icon
+                imagePath: 'assets/sayuran.png',
+                icon: Icons.local_florist,
               ),
               _CategoryCard(
                 label: 'Buah-buahan',
@@ -325,7 +268,8 @@ class HomeScreen extends StatelessWidget {
                     ),
                   );
                 },
-                icon: Icons.apple, // Fallback icon
+                imagePath: 'assets/buah_buahan.png',
+                icon: Icons.apple,
               ),
             ],
           ),
@@ -335,7 +279,7 @@ class HomeScreen extends StatelessWidget {
   }
 }
 
-// _IconMenu disesuaikan agar bisa dikustomisasi warna ikon dan backgroundnya
+// _IconMenu, _ImageCard, _CategoryCard tetap sama seperti terakhir Anda miliki
 class _IconMenu extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -347,8 +291,8 @@ class _IconMenu extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.onTap,
-    this.iconColor = Colors.white, // Default putih
-    this.backgroundColor = const Color(0xFF6B8E23), // Default hijau gelap
+    this.iconColor = Colors.white,
+    this.backgroundColor = const Color(0xFF6B8E23),
   });
 
   @override
@@ -358,24 +302,18 @@ class _IconMenu extends StatelessWidget {
       child: Column(
         children: [
           CircleAvatar(
-            radius: 28, // Ukuran ikon menu sesuai Dashboard.png
-            backgroundColor:
-                backgroundColor, // Background yang bisa dikustomisasi
-            child: Icon(
-              icon,
-              size: 28,
-              color: iconColor,
-            ), // Warna ikon yang bisa dikustomisasi
+            radius: 28,
+            backgroundColor: backgroundColor,
+            child: Icon(icon, size: 28, color: iconColor),
           ),
           const SizedBox(height: 6),
-          Text(label, style: const TextStyle(fontSize: 14)), // Font size 14
+          Text(label, style: const TextStyle(fontSize: 14)),
         ],
       ),
     );
   }
 }
 
-// _ImageCard disesuaikan agar gambar dimuat dari asset dan bisa diklik
 class _ImageCard extends StatelessWidget {
   final String imagePath;
   final VoidCallback onTap;
@@ -391,22 +329,19 @@ class _ImageCard extends StatelessWidget {
         width: 180,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
-          // Menggunakan Image.asset karena path yang Anda berikan adalah aset lokal
           image: DecorationImage(
             image: AssetImage(imagePath),
             fit: BoxFit.cover,
           ),
-          // Tambahkan shadow untuk efek 'floating'
           boxShadow: [
             BoxShadow(
               color: Colors.grey.withOpacity(0.2),
               spreadRadius: 1,
               blurRadius: 5,
-              offset: const Offset(0, 3), // Bayangan ke bawah
+              offset: const Offset(0, 3),
             ),
           ],
         ),
-        // Tambahkan child ini agar errorBuilder berfungsi jika gambar tidak ditemukan
         child: Image.asset(
           imagePath,
           fit: BoxFit.cover,
@@ -426,18 +361,17 @@ class _ImageCard extends StatelessWidget {
   }
 }
 
-// _CategoryCard disesuaikan agar bisa diklik dan ikonnya dinamis
 class _CategoryCard extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
-  final IconData icon; // Tambahkan parameter ikon fallback
-  final String? imagePath; // Tambahkan parameter untuk gambar kategori
+  final IconData icon;
+  final String? imagePath;
 
   const _CategoryCard({
     required this.label,
     required this.onTap,
-    required this.icon, // Ikon tetap wajib untuk fallback
-    this.imagePath, // Image path opsional
+    required this.icon,
+    this.imagePath,
   });
 
   @override
@@ -453,38 +387,30 @@ class _CategoryCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: Colors.grey.withOpacity(0.2), // Shadow lebih halus
+              color: Colors.grey.withOpacity(0.2),
               blurRadius: 4,
-              offset: const Offset(0, 2), // Bayangan ke bawah
+              offset: const Offset(0, 2),
             ),
           ],
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Tampilkan gambar jika ada, jika tidak, tampilkan ikon
             if (imagePath != null && imagePath!.isNotEmpty)
               ClipRRect(
-                borderRadius: BorderRadius.circular(
-                  8,
-                ), // Sedikit rounded corner untuk gambar kategori
+                borderRadius: BorderRadius.circular(8),
                 child: Image.asset(
                   imagePath!,
-                  width: 50, // Ukuran gambar kategori
+                  width: 50,
                   height: 50,
                   fit: BoxFit.cover,
                   errorBuilder:
-                      (context, error, stackTrace) => Icon(
-                        icon,
-                        color: const Color(0xFF424242),
-                      ), // Fallback ke ikon
+                      (context, error, stackTrace) =>
+                          Icon(icon, color: const Color(0xFF424242)),
                 ),
               )
             else
-              Icon(
-                icon,
-                color: const Color(0xFF424242),
-              ), // Warna ikon abu-abu gelap
+              Icon(icon, color: const Color(0xFF424242)),
             const SizedBox(height: 8),
             Text(
               label,

@@ -1,12 +1,134 @@
 import 'package:flutter/material.dart';
-import 'mart_screen.dart';
-import 'unggah_produk_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:panenplus/services/firestore_service.dart'; // Import FirestoreService
+import 'upload_product_screen.dart'; // Untuk edit/tambah etalase
+import 'detail_toko_screen.dart'; // Untuk melihat detail produk
 
-class TokoSayaScreen extends StatelessWidget {
+class TokoSayaScreen extends StatefulWidget {
   const TokoSayaScreen({super.key});
 
   @override
+  State<TokoSayaScreen> createState() => _TokoSayaScreenState();
+}
+
+class _TokoSayaScreenState extends State<TokoSayaScreen> {
+  String _storeName = 'Loading...';
+  String _storeDescription = 'Loading...';
+  String _profileImageUrl = '';
+  num _totalRevenue = 0; // Inisialisasi total pemasukan
+  final FirestoreService _firestoreService = FirestoreService();
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchStoreData();
+    _fetchTotalRevenue(); // Panggil fungsi untuk mengambil pemasukan
+  }
+
+  Future<void> _fetchStoreData() async {
+    User? currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser != null) {
+      try {
+        DocumentSnapshot userDoc = await _firestoreService.getUserData(
+          currentUser.uid,
+        );
+        if (userDoc.exists) {
+          final userData = userDoc.data() as Map<String, dynamic>;
+          setState(() {
+            _storeName =
+                userData['username'] ??
+                currentUser.displayName ??
+                'Nama Toko Anda';
+            _storeDescription =
+                userData['storeDescription'] ?? 'Penjual Produk Pertanian';
+            _profileImageUrl = userData['profileImageUrl'] ?? '';
+          });
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Gagal memuat data toko: $e')));
+        }
+      }
+    } else {
+      setState(() {
+        _storeName = 'Toko Tamu';
+        _storeDescription = 'Login untuk melihat toko Anda';
+      });
+    }
+  }
+
+  Future<void> _fetchTotalRevenue() async {
+    User? currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) return;
+
+    try {
+      // Query ke koleksi 'orders'
+      // Ini adalah contoh, Anda mungkin perlu menyesuaikan struktur data order Anda
+      // Asumsi: Setiap order memiliki array 'items' yang berisi map produk,
+      // dan setiap item produk memiliki 'sellerId' dan 'subtotal'
+      QuerySnapshot ordersSnapshot =
+          await FirebaseFirestore.instance
+              .collection('orders')
+              .where(
+                'sellerIdsInOrder',
+                arrayContains: currentUser.uid,
+              ) // Asumsi field ini ada
+              .get();
+
+      num sumRevenue = 0;
+      for (var orderDoc in ordersSnapshot.docs) {
+        final orderData = orderDoc.data() as Map<String, dynamic>;
+        List<dynamic> items =
+            orderData['items'] ?? []; // Asumsi ada field 'items'
+        for (var item in items) {
+          if (item['sellerId'] == currentUser.uid) {
+            sumRevenue +=
+                (item['price'] * item['qty']) ??
+                0; // Hitung pendapatan dari item ini
+          }
+        }
+      }
+      setState(() {
+        _totalRevenue = sumRevenue;
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Gagal memuat pemasukan: $e')));
+      }
+      setState(() {
+        _totalRevenue = 0; // Set ke 0 jika gagal
+      });
+    }
+  }
+
+  Widget _buildStatusItem(String count, String label) {
+    return Expanded(
+      child: Column(
+        children: [
+          Text(
+            count,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 12),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
+    User? currentUser = FirebaseAuth.instance.currentUser;
+
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
@@ -16,7 +138,7 @@ class TokoSayaScreen extends StatelessWidget {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () {
-            Navigator.pop(context); // kembali ke halaman sebelumnya (Mart)
+            Navigator.pop(context);
           },
         ),
       ),
@@ -34,22 +156,38 @@ class TokoSayaScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
-                    children: const [
-                      Icon(Icons.person, size: 40, color: Colors.green),
-                      SizedBox(width: 12),
+                    children: [
+                      CircleAvatar(
+                        radius: 20,
+                        backgroundColor: Colors.green.shade100,
+                        backgroundImage:
+                            _profileImageUrl.isNotEmpty
+                                ? NetworkImage(_profileImageUrl)
+                                    as ImageProvider
+                                : null,
+                        child:
+                            _profileImageUrl.isEmpty
+                                ? Icon(
+                                  Icons.person,
+                                  size: 28,
+                                  color: Colors.green[800],
+                                )
+                                : null,
+                      ),
+                      const SizedBox(width: 12),
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Laudya & Nilam',
-                            style: TextStyle(
+                            _storeName,
+                            style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
                           Text(
-                            'Mobile Programming Lanjut',
-                            style: TextStyle(color: Colors.grey),
+                            _storeDescription,
+                            style: const TextStyle(color: Colors.grey),
                           ),
                         ],
                       ),
@@ -64,7 +202,7 @@ class TokoSayaScreen extends StatelessWidget {
               ),
             ),
 
-            // Status Pesanan
+            // Status Pesanan (tetap statis untuk saat ini)
             Container(
               color: Colors.white,
               padding: const EdgeInsets.symmetric(vertical: 16),
@@ -88,59 +226,108 @@ class TokoSayaScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Etalase Toko Laudya & Nilam',
+                    'Etalase Toko', // Ubah teks agar lebih umum
                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                   ),
                   const SizedBox(height: 16),
-                  Wrap(
-                    spacing: 12,
-                    runSpacing: 12,
-                    children: const [
-                      _ProductItem(
-                        name: 'Jagung',
-                        price: 'Rp. 17,000',
-                        stock: '11',
-                        image: 'assets/jagung.png',
-                      ),
-                      _ProductItem(
-                        name: 'Tomat',
-                        price: 'Rp. 18,000',
-                        stock: '7',
-                        image: 'assets/tomat.png',
-                      ),
-                      _ProductItem(
-                        name: 'Wortel',
-                        price: 'Rp. 10,000',
-                        stock: '3',
-                        image: 'assets/wortel.png',
-                      ),
-                      _ProductItem(
-                        name: 'Kentang',
-                        price: 'Rp. 25,000',
-                        stock: '23',
-                        image: 'assets/kentang.png',
-                      ),
-                      _ProductItem(
-                        name: 'Beras',
-                        price: 'Rp. 20,000',
-                        stock: '47',
-                        image: 'assets/beras.png',
-                      ),
-                    ],
+                  // Mengambil produk dari Firestore
+                  StreamBuilder<QuerySnapshot>(
+                    stream:
+                        currentUser != null
+                            ? _firestoreService.getProductsBySeller(
+                              currentUser.uid,
+                            )
+                            : null, // Stream null jika user belum login
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+                      if (snapshot.hasError) {
+                        return Center(child: Text('Error: ${snapshot.error}'));
+                      }
+                      if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                        return const Center(
+                          child: Text('Belum ada produk di etalase Anda.'),
+                        );
+                      }
+
+                      // Tampilkan produk dalam Wrap
+                      return Wrap(
+                        spacing: 12,
+                        runSpacing: 12,
+                        children:
+                            snapshot.data!.docs.map((document) {
+                              Map<String, dynamic> data =
+                                  document.data() as Map<String, dynamic>;
+                              String productId = document.id;
+
+                              return _ProductItem(
+                                productId: productId,
+                                name: data['productName'] ?? 'Nama Produk',
+                                price:
+                                    'Rp ${data['price']?.toStringAsFixed(0) ?? '0'}',
+                                stock:
+                                    (data['stock'] ?? 0)
+                                        .toString(), // Pastikan stok adalah int
+                                image:
+                                    data['imageUrl'] ??
+                                    'assets/images/product_placeholder.png',
+                                onTap: () {
+                                  Navigator.pushNamed(
+                                    context,
+                                    '/detail_toko',
+                                    arguments: {
+                                      'productId': productId,
+                                      'productName': data['productName'],
+                                      'price': data['price']?.toStringAsFixed(
+                                        0,
+                                      ),
+                                      'imageUrl': data['imageUrl'],
+                                      'description': data['description'],
+                                      'storeName': _storeName,
+                                      'stock': data['stock']?.toString() ?? '0',
+                                    },
+                                  );
+                                },
+                                onEdit: () {
+                                  Navigator.pushNamed(
+                                    context,
+                                    '/upload',
+                                    arguments: {'productId': productId},
+                                  );
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        'Edit produk: ${data['productName']}',
+                                      ),
+                                    ),
+                                  );
+                                },
+                                onDelete: () async {
+                                  await _firestoreService.deleteProduct(
+                                    productId,
+                                  );
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        '${data['productName']} berhasil dihapus',
+                                      ),
+                                    ),
+                                  );
+                                },
+                              );
+                            }).toList(),
+                      );
+                    },
                   ),
                   const SizedBox(height: 20),
                   Center(
                     child: ElevatedButton.icon(
                       onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const UnggahProdukScreen(),
-                          ),
-                        );
+                        Navigator.pushNamed(context, '/upload');
                       },
                       icon: const Icon(Icons.add),
-                      label: const Text("Edit Etalase"),
+                      label: const Text("Tambah Produk Baru"),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.white,
                         foregroundColor: Colors.black,
@@ -156,11 +343,27 @@ class TokoSayaScreen extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
                       OutlinedButton(
-                        onPressed: () {},
+                        onPressed: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Halaman Pesanan Masuk belum diimplementasikan',
+                              ),
+                            ),
+                          );
+                        },
                         child: const Text("Pesanan Masuk"),
                       ),
                       OutlinedButton(
-                        onPressed: () {},
+                        onPressed: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Halaman Histori Pesanan belum diimplementasikan',
+                              ),
+                            ),
+                          );
+                        },
                         child: const Text("Histori Pesanan"),
                       ),
                     ],
@@ -173,9 +376,9 @@ class TokoSayaScreen extends StatelessWidget {
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Text(
-                      'Total Pemasukan\nRp357.000',
-                      style: TextStyle(
+                    child: Text(
+                      'Total Pemasukan\nRp${_totalRevenue.toStringAsFixed(0)}',
+                      style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                       ),
@@ -189,90 +392,106 @@ class TokoSayaScreen extends StatelessWidget {
           ],
         ),
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        selectedItemColor: Colors.green,
-        unselectedItemColor: Colors.grey,
-        currentIndex: 0, // ubah sesuai kebutuhan
-        onTap: (index) {
-          if (index == 0) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (_) => const MartTab()),
-            );
-          } else if (index == 1) {
-            // TODO: Arahkan ke keranjang
-          } else if (index == 2) {
-            // TODO: Arahkan ke akun
-          }
-        },
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.store), label: 'Home'),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.shopping_cart),
-            label: 'Keranjang',
-          ),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Akun'),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatusItem(String count, String label) {
-    return Column(
-      children: [
-        Text(
-          count,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: const TextStyle(fontSize: 12),
-          textAlign: TextAlign.center,
-        ),
-      ],
     );
   }
 }
 
 class _ProductItem extends StatelessWidget {
+  final String productId;
   final String name;
   final String price;
   final String stock;
   final String image;
+  final VoidCallback onTap;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
 
   const _ProductItem({
+    required this.productId,
     required this.name,
     required this.price,
     required this.stock,
     required this.image,
+    required this.onTap,
+    required this.onEdit,
+    required this.onDelete,
   });
 
   @override
   Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 110,
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey[300]!,
+              blurRadius: 4,
+              offset: const Offset(2, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            // Gambar Produk
+            if (image.startsWith('http')) // Gambar dari URL
+              Image.network(
+                image,
+                height: 60,
+                fit: BoxFit.cover,
+                errorBuilder: _imageErrorBuilder,
+              )
+            else // Gambar dari asset (placeholder)
+              Image.asset(
+                image,
+                height: 60,
+                fit: BoxFit.cover,
+                errorBuilder: _imageErrorBuilder,
+              ),
+            const SizedBox(height: 8),
+            Text(
+              name,
+              style: const TextStyle(fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
+              overflow: TextOverflow.ellipsis,
+            ),
+            Text(price, style: const TextStyle(color: Colors.black87)),
+            Text('Stok: $stock', style: const TextStyle(color: Colors.grey)),
+            // Opsi edit/hapus
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                GestureDetector(
+                  onTap: onEdit,
+                  child: const Icon(Icons.edit, size: 20, color: Colors.blue),
+                ),
+                const SizedBox(width: 8),
+                GestureDetector(
+                  onTap: onDelete,
+                  child: const Icon(Icons.delete, size: 20, color: Colors.red),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _imageErrorBuilder(
+    BuildContext context,
+    Object error,
+    StackTrace? stackTrace,
+  ) {
     return Container(
-      width: 110,
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey[300]!,
-            blurRadius: 4,
-            offset: const Offset(2, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Image.network(image, height: 60, fit: BoxFit.cover),
-          const SizedBox(height: 8),
-          Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
-          Text(price, style: const TextStyle(color: Colors.black87)),
-          Text('Stok: $stock', style: const TextStyle(color: Colors.grey)),
-        ],
-      ),
+      height: 60,
+      width: 60,
+      color: Colors.grey[300],
+      child: const Icon(Icons.image, size: 30, color: Colors.grey),
     );
   }
 }

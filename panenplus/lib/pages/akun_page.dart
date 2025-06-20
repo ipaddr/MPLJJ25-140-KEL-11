@@ -1,48 +1,106 @@
+// lib/screens/akun_screen.dart
 import 'package:flutter/material.dart';
-import '../screens/toko_saya_screen.dart'; // Pastikan path ini benar
-
-// import 'package:cloud_firestore/cloud_firestore.dart'; // Hapus import ini jika tidak ada lagi kebutuhan Firestore di file ini
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:panenplus/services/firestore_service.dart';
+import '../screens/toko_saya_screen.dart';
 
 class AkunPage extends StatefulWidget {
   const AkunPage({super.key});
 
   @override
-  State<AkunPage> createState() => _AkunPageState();
+  State<AkunPage> createState() => _AkunScreenState();
 }
 
-class _AkunPageState extends State<AkunPage> {
-  // Variabel state untuk data pengguna (sekarang diisi manual)
-  String _username = 'Laudya & Nilam';
-  String _email =
-      'Mobile Programming Lanjut'; // Menggunakan ini sebagai deskripsi di mockup
-  String _profileImageUrl =
-      ''; // Biarkan kosong jika tidak ada gambar profil manual
+class _AkunScreenState extends State<AkunPage> {
+  String _username = 'Loading...';
+  String _email = 'Loading...';
+  // String _phone = 'Loading...'; // Dihapus karena tidak digunakan di UI ini (sesuai peringatan)
+  String _profileImageUrl = '';
+  String _storeDescription =
+      'Loading...'; // Tambahkan dan akan diisi dari Firestore
+  final FirestoreService _firestoreService = FirestoreService();
 
   @override
   void initState() {
     super.initState();
-    // Panggil fungsi untuk mengisi data secara manual
-    _loadManualUserData();
+    _loadUserData();
   }
 
-  // Fungsi untuk mengisi data pengguna secara manual
-  void _loadManualUserData() {
-    setState(() {
-      _username = 'Laudya & Nilam'; // Data manual
-      _email = 'Mobile Programming Lanjut'; // Data manual
-      _profileImageUrl =
-          ''; // Atau 'assets/images/user_avatar.png' jika Anda memiliki gambar manual
-    });
+  Future<void> _loadUserData() async {
+    User? currentUser = FirebaseAuth.instance.currentUser;
+    // print('DEBUG: _loadUserData dipanggil.'); // Hapus print di produksi
+    if (currentUser != null) {
+      // print('DEBUG: User saat ini ada. UID: ${currentUser.uid}'); // Hapus print
+      try {
+        DocumentSnapshot userDoc = await _firestoreService.getUserData(
+          currentUser.uid,
+        );
+        // print('DEBUG: Dokumen user diambil dari Firestore.'); // Hapus print
+
+        if (userDoc.exists) {
+          // print('DEBUG: Dokumen user ditemukan di Firestore.'); // Hapus print
+          final userData = userDoc.data() as Map<String, dynamic>;
+          // print('DEBUG: Data user dari Firestore: $userData'); // Hapus print
+          setState(() {
+            _username =
+                userData['username'] ??
+                currentUser.displayName ??
+                'Pengguna PanenPlus';
+            _email =
+                userData['email'] ?? currentUser.email ?? 'Tidak ada email';
+            // _phone = userData['phone'] ?? 'Tidak ada nomor telepon'; // Baris ini tidak terpakai di UI Akun, jadi dihapus.
+            _profileImageUrl = userData['profileImageUrl'] ?? '';
+            _storeDescription =
+                userData['storeDescription'] ??
+                'Pengguna Aplikasi'; // Ambil deskripsi toko
+            // print('DEBUG: State diperbarui. Username: $_username'); // Hapus print
+          });
+        } else {
+          // print('DEBUG: Dokumen user TIDAK ditemukan di Firestore. Membuat dokumen baru...'); // Hapus print
+          await _firestoreService.saveNewUser(
+            currentUser.uid,
+            currentUser.displayName ?? '',
+            currentUser.email ?? '',
+            '', // Nomor telepon kosong
+          );
+          if (mounted) {
+            // print('DEBUG: Dokumen baru dibuat. Memanggil _loadUserData() lagi.'); // Hapus print
+            _loadUserData(); // Rekursif untuk me-reload data yang baru dibuat
+          }
+        }
+      } catch (e) {
+        // print('DEBUG: Error saat memuat data profil: $e'); // Hapus print
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Gagal memuat data profil: $e')),
+          );
+        }
+        setState(() {
+          _username = currentUser.displayName ?? 'Error';
+          _email = currentUser.email ?? 'Error';
+          // _phone = 'Error'; // Baris ini tidak terpakai di UI Akun, jadi dihapus.
+          _storeDescription = 'Error';
+        });
+      }
+    } else {
+      // print('DEBUG: User belum login.'); // Hapus print
+      setState(() {
+        _username = 'Tamu';
+        _email = 'Silakan login';
+        // _phone = ''; // Baris ini tidak terpakai di UI Akun, jadi dihapus.
+        _storeDescription = '';
+      });
+    }
   }
 
   Widget _buildOrderItem(String title) {
     return Expanded(
       child: Column(
         children: [
-          // Ini tetap 0, karena Anda belum terhubung ke database pesanan
-          Text(
-            "0",
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          const Text(
+            "0", // Ini masih manual, butuh query ke koleksi orders
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
           ),
           const SizedBox(height: 4),
           Text(title, style: TextStyle(color: Colors.grey[600], fontSize: 12)),
@@ -55,10 +113,13 @@ class _AkunPageState extends State<AkunPage> {
     return Expanded(
       child: InkWell(
         onTap: () {
-          // TODO: Navigasi atau fungsi untuk detail promo
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('Promo "${title}" diklik!')));
+          if (!mounted)
+            return; // Tambahkan cek mounted di awal scope yang menggunakan context
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Promo "$title" diklik!'),
+            ), // Perbaikan interpolasi string
+          );
         },
         borderRadius: BorderRadius.circular(8),
         child: Container(
@@ -162,17 +223,31 @@ class _AkunPageState extends State<AkunPage> {
           const SizedBox(height: 16),
           Row(
             children: [
-              Icon(Icons.person, color: Colors.green[800]),
+              // Tampilkan gambar profil dari Firestore atau ikon default
+              CircleAvatar(
+                radius: 20,
+                backgroundColor: Colors.green.shade100,
+                backgroundImage:
+                    _profileImageUrl.isNotEmpty
+                        ? NetworkImage(_profileImageUrl)
+                            as ImageProvider // Cast ke ImageProvider
+                        : null,
+                child:
+                    _profileImageUrl.isEmpty
+                        ? Icon(Icons.person, size: 28, color: Colors.green[800])
+                        : null,
+              ),
               const SizedBox(width: 10),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    _username, // Menampilkan username manual
+                    _username, // Menampilkan username dari Firestore
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                   Text(
-                    _email, // Menampilkan email manual
+                    // INI PERBAIKANNYA: Menggunakan _storeDescription
+                    _storeDescription, // Menampilkan deskripsi toko/profil dari Firestore
                     style: TextStyle(color: Colors.grey[600], fontSize: 12),
                   ),
                 ],
@@ -259,6 +334,7 @@ class _AkunPageState extends State<AkunPage> {
           Center(
             child: ElevatedButton(
               onPressed: () async {
+                await FirebaseAuth.instance.signOut();
                 if (mounted) {
                   Navigator.of(
                     context,

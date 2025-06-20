@@ -198,8 +198,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
               child: Column(
                 children: [
                   RadioListTile<String>(
-                    title: const Text('Transfer Bank (BCA)'),
-                    value: 'bank_transfer_bca',
+                    title: const Text('Transfer Bank'),
+                    value: 'bank_transfer',
                     groupValue: _selectedPaymentMethod,
                     onChanged: (value) {
                       setState(() {
@@ -208,8 +208,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     },
                   ),
                   RadioListTile<String>(
-                    title: const Text('Gopay'),
-                    value: 'gopay',
+                    title: const Text('COD'),
+                    value: 'cod',
                     groupValue: _selectedPaymentMethod,
                     onChanged: (value) {
                       setState(() {
@@ -218,8 +218,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     },
                   ),
                   RadioListTile<String>(
-                    title: const Text('OVO'),
-                    value: 'ovo',
+                    title: const Text('Dana'),
+                    value: 'dana',
                     groupValue: _selectedPaymentMethod,
                     onChanged: (value) {
                       setState(() {
