@@ -279,7 +279,7 @@ class _MartProductCard extends StatelessWidget {
                   const SizedBox(height: 4),
                   GestureDetector(
                     onTap: () {
-                      Navigator.pushNamed(context, '/toko_saya');
+                      Navigator.pushNamed(context, '/detail_toko');
                     },
                     child: Text(
                       sellerName,

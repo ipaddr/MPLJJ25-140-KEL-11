@@ -1,15 +1,14 @@
 // lib/services/firestore_service.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_storage/firebase_storage.dart'; // Untuk Firebase Storage
-import 'dart:io'; // Untuk tipe File dari image_picker
-import 'dart:typed_data'; // Tambahkan ini untuk Uint8List
+import 'package:firebase_storage/firebase_storage.dart';
+import 'dart:io'; // Untuk tipe File dari mobile
+import 'dart:typed_data'; // Untuk tipe Uint8List dari web
 
 class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseStorage _storage =
-      FirebaseStorage.instance; // Inisialisasi Firebase Storage
+  final FirebaseStorage _storage = FirebaseStorage.instance;
 
   // Mendapatkan ID pengguna saat ini
   String? getCurrentUserId() {
@@ -33,10 +32,7 @@ class FirestoreService {
       'createdAt': Timestamp.now(),
       'storeDescription': 'Pengguna PanenPlus', // Deskripsi default
       'profileImageUrl': '', // URL gambar profil default kosong
-      'address': '',
-      'city': '',
-      'postalCode': '',
-      // Anda bisa menambahkan field default lainnya
+      'address': '', // Alamat default kosong
     });
   }
 
@@ -52,16 +48,13 @@ class FirestoreService {
 
   // --- Operasi Produk (Products) ---
 
-  // Mengunggah gambar ke Firebase Storage
-
   // Mengunggah gambar untuk MOBILE (menerima File)
   Future<String> uploadProductImage(File imageFile) async {
     String fileName =
         'product_images/${DateTime.now().millisecondsSinceEpoch}_${imageFile.path.split('/').last}';
     UploadTask uploadTask = _storage.ref().child(fileName).putFile(imageFile);
     TaskSnapshot snapshot = await uploadTask;
-    String downloadUrl = await snapshot.ref.getDownloadURL();
-    return downloadUrl;
+    return await snapshot.ref.getDownloadURL();
   }
 
   // Mengunggah gambar untuk WEB (menerima Uint8List)
@@ -71,13 +64,9 @@ class FirestoreService {
   ) async {
     String filePath =
         'product_images/${DateTime.now().millisecondsSinceEpoch}_$fileName';
-    UploadTask uploadTask = _storage
-        .ref()
-        .child(filePath)
-        .putData(imageBytes); // Menggunakan putData untuk bytes
+    UploadTask uploadTask = _storage.ref().child(filePath).putData(imageBytes);
     TaskSnapshot snapshot = await uploadTask;
-    String downloadUrl = await snapshot.ref.getDownloadURL();
-    return downloadUrl;
+    return await snapshot.ref.getDownloadURL();
   }
 
   // Menambahkan produk baru
@@ -90,7 +79,9 @@ class FirestoreService {
     required String sellerName,
     required int stock,
   }) async {
-    await _db.collection('products').add({
+    DocumentReference docRef = _db.collection('products').doc();
+    await docRef.set({
+      'productId': docRef.id,
       'productName': productName,
       'price': price,
       'description': description,
@@ -102,9 +93,12 @@ class FirestoreService {
     });
   }
 
-  // Mendapatkan semua produk (untuk Mart/Dashboard)
+  // Mendapatkan semua produk
   Stream<QuerySnapshot> getProducts() {
-    return _db.collection('products').snapshots();
+    return _db
+        .collection('products')
+        .orderBy('timestamp', descending: true)
+        .snapshots();
   }
 
   // Mendapatkan produk berdasarkan sellerId (untuk Toko Saya)
@@ -141,7 +135,6 @@ class FirestoreService {
     String productId,
     Map<String, dynamic> itemData,
   ) async {
-    // Gunakan set dengan merge:true atau update. Doc ID bisa productId atau cartItemId unik
     await _db
         .collection('users')
         .doc(userId)
@@ -165,38 +158,91 @@ class FirestoreService {
         .delete();
   }
 
-  // Mengosongkan keranjang setelah pesanan dibuat
-  Future<void> clearCart(String userId) async {
-    QuerySnapshot cartSnapshot =
-        await _db.collection('users').doc(userId).collection('cart').get();
-    for (DocumentSnapshot doc in cartSnapshot.docs) {
-      await doc.reference.delete();
-    }
-  }
-
-  // --- Operasi Pesanan (Orders) ---
+  // --- Operasi Pesanan (Orders) & Logika Terkait ---
 
   // Membuat pesanan baru
   Future<void> createOrder(Map<String, dynamic> orderData) async {
     await _db.collection('orders').add(orderData);
   }
 
-  // Mendapatkan pesanan pengguna
+  // Mengosongkan keranjang setelah pesanan dibuat (Versi Efisien)
+  Future<void> clearCart(String userId) async {
+    QuerySnapshot cartSnapshot =
+        await _db.collection('users').doc(userId).collection('cart').get();
+
+    WriteBatch batch = _db.batch();
+    for (DocumentSnapshot doc in cartSnapshot.docs) {
+      batch.delete(doc.reference);
+    }
+    await batch.commit();
+  }
+
+  // Mendapatkan semua pesanan milik seorang pengguna (pembeli)
   Stream<QuerySnapshot> getUserOrders(String userId) {
     return _db
         .collection('orders')
-        .where('userId', isEqualTo: userId)
+        .where('buyerId', isEqualTo: userId)
+        .orderBy('createdAt', descending: true)
         .snapshots();
   }
 
-  // Mendapatkan pesanan untuk penjual (misal semua pesanan yang berisi produk dari penjual ini)
-  Stream<QuerySnapshot> getSellerOrders(String sellerId) {
-    // Ini query kompleks, mungkin perlu arrayContains untuk sellerId di setiap item order
-    // Atau struktur data orders diubah agar lebih mudah query per seller.
-    // Untuk awal, kita bisa bayangkan field 'sellerIdsInOrder' (array of seller UIDs)
+  // Mendapatkan pesanan untuk penjual tertentu
+  Stream<QuerySnapshot> getOrdersForSeller(String sellerId) {
     return _db
         .collection('orders')
         .where('sellerIdsInOrder', arrayContains: sellerId)
+        .orderBy('createdAt', descending: true)
+        .snapshots();
+  }
+
+  // --- Operasi Chat (KODE BARU DITAMBAHKAN DI SINI) ---
+
+  // Membuat ID chat yang konsisten antara dua pengguna
+  String getChatId(String userId1, String userId2) {
+    if (userId1.hashCode <= userId2.hashCode) {
+      return '$userId1-$userId2';
+    } else {
+      return '$userId2-$userId1';
+    }
+  }
+
+  // Mengirim pesan baru dan mengupdate data percakapan
+  Future<void> sendMessage(
+    String chatId,
+    Map<String, dynamic> messageData,
+    Map<String, dynamic> chatData,
+  ) async {
+    // Tambahkan pesan ke sub-koleksi messages
+    await _db
+        .collection('chats')
+        .doc(chatId)
+        .collection('messages')
+        .add(messageData);
+
+    // Update data percakapan utama (lastMessage, dll)
+    // set dengan merge:true akan membuat dokumen jika belum ada, atau update jika sudah ada
+    await _db
+        .collection('chats')
+        .doc(chatId)
+        .set(chatData, SetOptions(merge: true));
+  }
+
+  // Mendapatkan stream/aliran pesan dari sebuah percakapan
+  Stream<QuerySnapshot> getChatMessages(String chatId) {
+    return _db
+        .collection('chats')
+        .doc(chatId)
+        .collection('messages')
+        .orderBy('timestamp', descending: true)
+        .snapshots();
+  }
+
+  // Mendapatkan semua percakapan yang dimiliki seorang pengguna
+  Stream<QuerySnapshot> getUserChats(String userId) {
+    return _db
+        .collection('chats')
+        .where('users', arrayContains: userId)
+        .orderBy('lastMessageTimestamp', descending: true)
         .snapshots();
   }
 }

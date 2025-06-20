@@ -32,7 +32,7 @@ class HomeScreen extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Image.asset(
-                        'assets/images/panenplus_logo_text.png',
+                        'assets/logo.png',
                         height: 35,
                         errorBuilder:
                             (context, error, stackTrace) => const Text(
@@ -107,10 +107,10 @@ class HomeScreen extends StatelessWidget {
                 backgroundColor: Colors.white,
               ),
               _IconMenu(
-                icon: Icons.list_alt,
-                label: 'Pesanan',
+                icon: Icons.chat,
+                label: 'Chat',
                 onTap: () {
-                  Navigator.pushNamed(context, '/orders');
+                  Navigator.pushNamed(context, '/chat');
                 },
                 iconColor: const Color(0xFF558B2F),
                 backgroundColor: Colors.white,
@@ -237,7 +237,6 @@ class HomeScreen extends StatelessWidget {
                     ),
                   );
                 },
-                imagePath: 'assets/makanan_pokok.png',
                 icon: Icons.rice_bowl,
               ),
               _CategoryCard(
@@ -249,7 +248,6 @@ class HomeScreen extends StatelessWidget {
                     ),
                   );
                 },
-                imagePath: 'assets/sayuran.png',
                 icon: Icons.local_florist,
               ),
               _CategoryCard(
@@ -263,7 +261,6 @@ class HomeScreen extends StatelessWidget {
                     ),
                   );
                 },
-                imagePath: 'assets/buah_buahan.png',
                 icon: Icons.apple,
               ),
             ],

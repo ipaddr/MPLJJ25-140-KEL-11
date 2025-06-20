@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:panenplus/services/firestore_service.dart'; // Import FirestoreService
+import 'package:panenplus/services/firestore_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:panenplus/screens/chat_screen.dart'; // Pastikan import ini ada
 
 class DetailTokoScreen extends StatefulWidget {
   const DetailTokoScreen({super.key});
@@ -12,37 +14,33 @@ class DetailTokoScreen extends StatefulWidget {
 class _DetailTokoScreenState extends State<DetailTokoScreen> {
   final FirestoreService _firestoreService = FirestoreService();
   bool _isLoading = true;
-  Map<String, dynamic>? _productData; // Data produk yang diambil
-  Map<String, dynamic>? _sellerData; // Data penjual yang diambil
+  Map<String, dynamic>? _productData;
+  Map<String, dynamic>? _sellerData;
 
   String _productName = 'Loading...';
   String _productPrice = 'Loading...';
-  String _productImage = 'assets/images/product_placeholder.png';
+  String _productImage = ''; // Default kosong agar bisa menampilkan placeholder
   String _productDescription = 'Loading...';
   String _productStock = 'Loading...';
   String _sellerName = 'Loading...';
+  String _sellerProfileImage = ''; // Untuk foto profil penjual
 
   @override
   void initState() {
     super.initState();
-    // Data produk akan dimuat setelah argumen tersedia di didChangeDependencies
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (_productData == null) {
-      // Muat hanya sekali
       final args =
           ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
       if (args != null && args['productId'] != null) {
         _fetchProductAndSellerData(args['productId'] as String);
       } else {
-        // Jika tidak ada productId, gunakan data dari argumen dan jangan load
         _updateUIWithArgs(args);
-        setState(() {
-          _isLoading = false;
-        });
+        setState(() => _isLoading = false);
       }
     }
   }
@@ -51,8 +49,7 @@ class _DetailTokoScreenState extends State<DetailTokoScreen> {
     setState(() {
       _productName = args?['productName'] ?? 'Nama Produk';
       _productPrice = args?['price'] ?? 'Rp 0';
-      _productImage =
-          args?['imageUrl'] ?? 'assets/images/product_placeholder.png';
+      _productImage = args?['imageUrl'] ?? '';
       _productDescription = args?['description'] ?? 'Tidak ada deskripsi.';
       _productStock = args?['stock'] ?? '0';
       _sellerName = args?['storeName'] ?? 'Nama Toko Penjual';
@@ -60,17 +57,14 @@ class _DetailTokoScreenState extends State<DetailTokoScreen> {
   }
 
   Future<void> _fetchProductAndSellerData(String productId) async {
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
     try {
-      DocumentSnapshot productDoc = await _firestoreService.getProductDetails(
+      DocumentSnapshot? productDoc = await _firestoreService.getProductDetails(
         productId,
       );
       if (productDoc.exists) {
         _productData = productDoc.data() as Map<String, dynamic>;
 
-        // Fetch seller data
         String sellerId = _productData?['sellerId'] ?? '';
         if (sellerId.isNotEmpty) {
           DocumentSnapshot sellerDoc = await _firestoreService.getUserData(
@@ -81,23 +75,23 @@ class _DetailTokoScreenState extends State<DetailTokoScreen> {
           }
         }
 
-        setState(() {
-          _productName = _productData?['productName'] ?? 'Nama Produk';
-          _productPrice =
-              'Rp ${_productData?['price']?.toStringAsFixed(0) ?? '0'}';
-          _productImage =
-              _productData?['imageUrl'] ??
-              'assets/images/product_placeholder.png';
-          _productDescription =
-              _productData?['description'] ?? 'Tidak ada deskripsi.';
-          _productStock = _productData?['stock']?.toString() ?? '0';
-          _sellerName =
-              _sellerData?['username'] ??
-              _productData?['sellerName'] ??
-              'Penjual';
-        });
+        if (mounted) {
+          setState(() {
+            _productName = _productData?['productName'] ?? 'Nama Produk';
+            _productPrice =
+                'Rp ${_productData?['price']?.toStringAsFixed(0) ?? '0'}';
+            _productImage = _productData?['imageUrl'] ?? '';
+            _productDescription =
+                _productData?['description'] ?? 'Tidak ada deskripsi.';
+            _productStock = _productData?['stock']?.toString() ?? '0';
+            _sellerName =
+                _sellerData?['username'] ??
+                _productData?['sellerName'] ??
+                'Penjual';
+            _sellerProfileImage = _sellerData?['profileImageUrl'] ?? '';
+          });
+        }
       } else {
-        // Product not found in Firestore, fallback to args if any
         final args =
             ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
         _updateUIWithArgs(args);
@@ -107,228 +101,314 @@ class _DetailTokoScreenState extends State<DetailTokoScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Gagal memuat detail produk: $e')),
         );
+        final args =
+            ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+        _updateUIWithArgs(args);
       }
-      final args =
-          ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
-      _updateUIWithArgs(args); // Fallback to args on error
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        title: const Text('Detail Produk'), // Judul sesuai fungsi layar
-        backgroundColor: const Color(0xffC5DDBF), // Warna AppBar konsisten
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
+      backgroundColor: Colors.grey[100],
       body:
           _isLoading
               ? const Center(child: CircularProgressIndicator())
-              : SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Gambar Produk
-                    if (_productImage.startsWith('http'))
-                      Image.network(
-                        _productImage,
-                        height: 250,
-                        width: double.infinity,
-                        fit: BoxFit.cover,
-                        errorBuilder: _imageErrorBuilder,
-                      )
-                    else
-                      Image.asset(
-                        _productImage,
-                        height: 250,
-                        width: double.infinity,
-                        fit: BoxFit.cover,
-                        errorBuilder: _imageErrorBuilder,
+              : CustomScrollView(
+                slivers: [
+                  // --- AppBar dengan Gambar Produk ---
+                  SliverAppBar(
+                    expandedHeight: 300.0,
+                    pinned: true,
+                    backgroundColor: const Color(0xffC5DDBF),
+                    leading: IconButton(
+                      icon: const CircleAvatar(
+                        backgroundColor: Colors.black54,
+                        child: Icon(Icons.arrow_back, color: Colors.white),
                       ),
-
-                    Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            _productName,
-                            style: const TextStyle(
-                              fontSize: 28,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            _productPrice,
-                            style: const TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.green,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          Row(
-                            children: [
-                              const Icon(Icons.store, color: Colors.grey),
-                              const SizedBox(width: 8),
-                              Text(
-                                _sellerName, // Nama penjual
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  color: Colors.black87,
-                                ),
-                              ),
-                              const Spacer(),
-                              ElevatedButton.icon(
-                                onPressed: () {
-                                  // Navigasi ke halaman toko penjual ini
-                                  // Pastikan _productData memiliki 'sellerId' untuk ini
-                                  Navigator.pushNamed(
-                                    context,
-                                    '/toko_saya',
-                                  ); // Atau rute spesifik ke toko penjual
-                                },
-                                icon: const Icon(Icons.storefront),
-                                label: const Text('Kunjungi Toko'),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.grey[200],
-                                  foregroundColor: Colors.black87,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-                          const Text(
-                            'Deskripsi Produk:',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            _productDescription,
-                            style: const TextStyle(fontSize: 16, height: 1.5),
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'Stok: $_productStock',
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.blue,
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: OutlinedButton.icon(
-                                  onPressed: () {
-                                    // Navigasi ke AddToCartScreen untuk menambah/mengatur kuantitas
-                                    // Asumsi AddToCartScreen menerima data produk
-                                    if (_productData != null) {
-                                      Navigator.pushNamed(
-                                        context,
-                                        '/add_to_cart',
-                                        arguments: {
-                                          'productId':
-                                              _productData!['productId'] ??
-                                              '', // Pastikan ada ID produk
-                                          'name': _productData!['productName'],
-                                          'price':
-                                              _productData!['price']
-                                                  ?.toString(), // Kirim harga sebagai string
-                                          'image': _productData!['imageUrl'],
-                                          'sellerId': _productData!['sellerId'],
-                                          'sellerName':
-                                              _productData!['sellerName'],
-                                          'stock': _productData!['stock'],
-                                        },
-                                      );
-                                    } else {
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        const SnackBar(
-                                          content: Text(
-                                            'Detail produk tidak lengkap.',
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                    flexibleSpace: FlexibleSpaceBar(
+                      background:
+                          _productImage.isNotEmpty
+                              ? Image.network(
+                                _productImage,
+                                fit: BoxFit.cover,
+                                errorBuilder:
+                                    (context, error, stackTrace) =>
+                                        const Center(
+                                          child: Icon(
+                                            Icons.broken_image,
+                                            size: 100,
+                                            color: Colors.white,
                                           ),
                                         ),
-                                      );
-                                    }
-                                  },
-                                  icon: const Icon(
-                                    Icons.add_shopping_cart,
-                                    color: Colors.green,
-                                  ),
-                                  label: const Text(
-                                    'Tambah Keranjang',
-                                    style: TextStyle(color: Colors.green),
-                                  ),
-                                  style: OutlinedButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 14,
-                                    ),
-                                    side: const BorderSide(color: Colors.green),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: ElevatedButton.icon(
-                                  onPressed: () {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
-                                          'Fitur Beli Sekarang belum diimplementasikan.',
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                  icon: const Icon(
-                                    Icons.shopping_bag_outlined,
+                              )
+                              : Container(
+                                color: Colors.grey[300],
+                                child: const Center(
+                                  child: Icon(
+                                    Icons.image,
+                                    size: 100,
                                     color: Colors.white,
                                   ),
-                                  label: const Text(
-                                    'Beli Sekarang',
-                                    style: TextStyle(color: Colors.white),
-                                  ),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.green,
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 14,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                  ),
                                 ),
                               ),
-                            ],
-                          ),
-                        ],
-                      ),
                     ),
-                  ],
+                  ),
+                  // --- Konten Detail Produk ---
+                  SliverList(
+                    delegate: SliverChildListDelegate([
+                      // --- Informasi Nama & Harga ---
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        color: Colors.white,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _productName,
+                              style: const TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              _productPrice,
+                              style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.green[800],
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.inventory_2_outlined,
+                                  size: 16,
+                                  color: Colors.grey[600],
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'Stok: $_productStock',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+
+                      // --- Informasi Penjual ---
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        color: Colors.white,
+                        child: Row(
+                          children: [
+                            CircleAvatar(
+                              backgroundImage:
+                                  _sellerProfileImage.isNotEmpty
+                                      ? NetworkImage(_sellerProfileImage)
+                                      : null,
+                              backgroundColor: Colors.green.shade100,
+                              child:
+                                  _sellerProfileImage.isEmpty
+                                      ? Icon(
+                                        Icons.store,
+                                        color: Colors.green[800],
+                                      )
+                                      : null,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                _sellerName,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                            OutlinedButton(
+                              onPressed:
+                                  () => Navigator.pushNamed(
+                                    context,
+                                    '/toko_saya',
+                                  ),
+                              child: const Text('Kunjungi Toko'),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+
+                      // --- Deskripsi Produk ---
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(16),
+                        color: Colors.white,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Deskripsi Produk',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              _productDescription,
+                              style: TextStyle(
+                                fontSize: 15,
+                                height: 1.5,
+                                color: Colors.grey[700],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ]),
+                  ),
+                ],
+              ),
+      bottomNavigationBar: _buildActionBottomBar(),
+    );
+  }
+
+  // --- Bottom Bar untuk Tombol Aksi ---
+  Widget _buildActionBottomBar() {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: 16,
+        vertical: 12,
+      ).copyWith(bottom: MediaQuery.of(context).padding.bottom + 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.3),
+            spreadRadius: 1,
+            blurRadius: 5,
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          // --- Tombol Chat ---
+          OutlinedButton(
+            onPressed: () {
+              final currentUser = FirebaseAuth.instance.currentUser;
+              if (currentUser == null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text("Anda harus login untuk memulai chat."),
+                  ),
+                );
+                return;
+              }
+              if (_productData == null) return;
+              if (currentUser.uid == _productData!['sellerId']) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text("Anda tidak bisa chat dengan toko sendiri."),
+                  ),
+                );
+                return;
+              }
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder:
+                      (context) => ChatScreen(
+                        sellerId: _productData!['sellerId'],
+                        sellerName: _sellerName,
+                        buyerId: currentUser.uid,
+                        buyerName: currentUser.displayName ?? 'Pembeli',
+                      ),
+                ),
+              );
+            },
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.all(12),
+              shape: const CircleBorder(),
+              side: BorderSide(color: Colors.grey.shade300),
+            ),
+            child: Icon(Icons.chat_bubble_outline, color: Colors.green[800]),
+          ),
+          const SizedBox(width: 12),
+          // --- Tombol Tambah Keranjang ---
+          Expanded(
+            child: ElevatedButton(
+              onPressed: () {
+                if (_productData != null) {
+                  Navigator.pushNamed(
+                    context,
+                    '/add_to_cart',
+                    arguments: {
+                      'productId': _productData!['productId'] ?? '',
+                      'name': _productData!['productName'],
+                      'price': _productData!['price']?.toString(),
+                      'image': _productData!['imageUrl'],
+                      'sellerId': _productData!['sellerId'],
+                      'sellerName': _productData!['sellerName'],
+                      'stock': _productData!['stock'],
+                    },
+                  );
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green[100],
+                foregroundColor: Colors.green[900],
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
                 ),
               ),
+              child: const Text('Tambah Keranjang'),
+            ),
+          ),
+          const SizedBox(width: 12),
+          // --- Tombol Beli Sekarang ---
+          Expanded(
+            child: ElevatedButton(
+              onPressed: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      'Fitur Beli Sekarang belum diimplementasikan.',
+                    ),
+                  ),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green[800],
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: const Text('Beli Sekarang'),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

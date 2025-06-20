@@ -12,6 +12,9 @@ import 'screens/payment_screen.dart';
 import 'screens/toko_saya_screen.dart';
 import 'screens/transaction_success_screen.dart';
 import 'screens/akun_screen.dart';
+import 'screens/detail_toko_screen.dart';
+import 'screens/chat_list_screen.dart';
+import 'screens/chat_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -35,6 +38,8 @@ class PanenPlusApp extends StatelessWidget {
         '/add_to_cart': (context) => const AddToCartScreen(),
         '/addToCart': (context) => const CartScreen(),
         '/payment': (context) => const PaymentScreen(),
+        '/chat': (context) => const ChatListScreen(),
+        '/detail_toko': (context) => const DetailTokoScreen(),
         '/transaction_success': (context) => const TransactionSuccessScreen(),
       },
     );

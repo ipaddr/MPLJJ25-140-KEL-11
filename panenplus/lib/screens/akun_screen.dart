@@ -295,26 +295,10 @@ class _AkunScreenState extends State<AkunPage> {
           ),
           const SizedBox(height: 24),
           const Text(
-            "Pesanan Saya",
+            "Promo Hari Ini",
             style: TextStyle(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.grey.shade200),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildOrderItem('Pesanan Saya'),
-                _buildOrderItem('Dikemas'),
-                _buildOrderItem('Dikirim'),
-                _buildOrderItem('Beri Penilaian'),
-              ],
-            ),
-          ),
           const SizedBox(height: 24),
           Row(
             children: [

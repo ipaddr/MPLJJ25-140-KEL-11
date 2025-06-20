@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:panenplus/services/firestore_service.dart'; // Import FirestoreService
+import 'package:panenplus/services/firestore_service.dart';
 
 class TokoSayaScreen extends StatefulWidget {
   const TokoSayaScreen({super.key});
@@ -14,14 +14,14 @@ class _TokoSayaScreenState extends State<TokoSayaScreen> {
   String _storeName = 'Loading...';
   String _storeDescription = 'Loading...';
   String _profileImageUrl = '';
-  num _totalRevenue = 0; // Inisialisasi total pemasukan
+  // Variabel _totalRevenue tidak lagi di-fetch di initState, tapi bisa di-update dari stream jika perlu
   final FirestoreService _firestoreService = FirestoreService();
 
   @override
   void initState() {
     super.initState();
     _fetchStoreData();
-    _fetchTotalRevenue(); // Panggil fungsi untuk mengambil pemasukan
+    // Kita tidak perlu lagi memanggil _fetchTotalRevenue di sini karena bisa didapat dari stream
   }
 
   Future<void> _fetchStoreData() async {
@@ -33,15 +33,17 @@ class _TokoSayaScreenState extends State<TokoSayaScreen> {
         );
         if (userDoc.exists) {
           final userData = userDoc.data() as Map<String, dynamic>;
-          setState(() {
-            _storeName =
-                userData['username'] ??
-                currentUser.displayName ??
-                'Nama Toko Anda';
-            _storeDescription =
-                userData['storeDescription'] ?? 'Penjual Produk Pertanian';
-            _profileImageUrl = userData['profileImageUrl'] ?? '';
-          });
+          if (mounted) {
+            setState(() {
+              _storeName =
+                  userData['username'] ??
+                  currentUser.displayName ??
+                  'Nama Toko Anda';
+              _storeDescription =
+                  userData['storeDescription'] ?? 'Penjual Produk Pertanian';
+              _profileImageUrl = userData['profileImageUrl'] ?? '';
+            });
+          }
         }
       } catch (e) {
         if (mounted) {
@@ -51,56 +53,12 @@ class _TokoSayaScreenState extends State<TokoSayaScreen> {
         }
       }
     } else {
-      setState(() {
-        _storeName = 'Toko Tamu';
-        _storeDescription = 'Login untuk melihat toko Anda';
-      });
-    }
-  }
-
-  Future<void> _fetchTotalRevenue() async {
-    User? currentUser = FirebaseAuth.instance.currentUser;
-    if (currentUser == null) return;
-
-    try {
-      // Query ke koleksi 'orders'
-      // Ini adalah contoh, Anda mungkin perlu menyesuaikan struktur data order Anda
-      // Asumsi: Setiap order memiliki array 'items' yang berisi map produk,
-      // dan setiap item produk memiliki 'sellerId' dan 'subtotal'
-      QuerySnapshot ordersSnapshot =
-          await FirebaseFirestore.instance
-              .collection('orders')
-              .where(
-                'sellerIdsInOrder',
-                arrayContains: currentUser.uid,
-              ) // Asumsi field ini ada
-              .get();
-
-      num sumRevenue = 0;
-      for (var orderDoc in ordersSnapshot.docs) {
-        final orderData = orderDoc.data() as Map<String, dynamic>;
-        List<dynamic> items =
-            orderData['items'] ?? []; // Asumsi ada field 'items'
-        for (var item in items) {
-          if (item['sellerId'] == currentUser.uid) {
-            sumRevenue +=
-                (item['price'] * item['qty']) ??
-                0; // Hitung pendapatan dari item ini
-          }
-        }
-      }
-      setState(() {
-        _totalRevenue = sumRevenue;
-      });
-    } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Gagal memuat pemasukan: $e')));
+        setState(() {
+          _storeName = 'Toko Tamu';
+          _storeDescription = 'Login untuk melihat toko Anda';
+        });
       }
-      setState(() {
-        _totalRevenue = 0; // Set ke 0 jika gagal
-      });
     }
   }
 
@@ -135,21 +93,17 @@ class _TokoSayaScreenState extends State<TokoSayaScreen> {
         centerTitle: true,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () {
-            Navigator.pop(context);
-          },
+          onPressed: () => Navigator.pop(context),
         ),
       ),
       body: SingleChildScrollView(
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Info Toko
             Container(
               padding: const EdgeInsets.all(16),
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                border: Border(bottom: BorderSide(color: Colors.grey)),
-              ),
+              color: Colors.white,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -191,210 +145,296 @@ class _TokoSayaScreenState extends State<TokoSayaScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Toko menjual berbagai bahan makanan pokok, sayuran, buah-buahan...',
-                    style: TextStyle(color: Colors.black54),
-                  ),
                 ],
               ),
             ),
 
-            // Status Pesanan (tetap statis untuk saat ini)
-            Container(
-              color: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _buildStatusItem('0', 'Perlu dikirim'),
-                  _buildStatusItem('0', 'Pembatalan'),
-                  _buildStatusItem('0', 'Pengembalian'),
-                  _buildStatusItem('0', 'Penilaian\nPerlu Dibalas'),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 8),
-
-            // Etalase Toko
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Etalase Toko', // Ubah teks agar lebih umum
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                  ),
-                  const SizedBox(height: 16),
-                  // Mengambil produk dari Firestore
-                  StreamBuilder<QuerySnapshot>(
-                    stream:
-                        currentUser != null
-                            ? _firestoreService.getProductsBySeller(
-                              currentUser.uid,
-                            )
-                            : null, // Stream null jika user belum login
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Center(child: CircularProgressIndicator());
-                      }
-                      if (snapshot.hasError) {
-                        return Center(child: Text('Error: ${snapshot.error}'));
-                      }
-                      if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                        return const Center(
-                          child: Text('Belum ada produk di etalase Anda.'),
-                        );
-                      }
-
-                      // Tampilkan produk dalam Wrap
-                      return Wrap(
-                        spacing: 12,
-                        runSpacing: 12,
-                        children:
-                            snapshot.data!.docs.map((document) {
-                              Map<String, dynamic> data =
-                                  document.data() as Map<String, dynamic>;
-                              String productId = document.id;
-
-                              return _ProductItem(
-                                productId: productId,
-                                name: data['productName'] ?? 'Nama Produk',
-                                price:
-                                    'Rp ${data['price']?.toStringAsFixed(0) ?? '0'}',
-                                stock:
-                                    (data['stock'] ?? 0)
-                                        .toString(), // Pastikan stok adalah int
-                                image:
-                                    data['imageUrl'] ??
-                                    'assets/images/product_placeholder.png',
-                                onTap: () {
-                                  Navigator.pushNamed(
-                                    context,
-                                    '/detail_toko',
-                                    arguments: {
-                                      'productId': productId,
-                                      'productName': data['productName'],
-                                      'price': data['price']?.toStringAsFixed(
-                                        0,
-                                      ),
-                                      'imageUrl': data['imageUrl'],
-                                      'description': data['description'],
-                                      'storeName': _storeName,
-                                      'stock': data['stock']?.toString() ?? '0',
-                                    },
-                                  );
-                                },
-                                onEdit: () {
-                                  Navigator.pushNamed(
-                                    context,
-                                    '/upload',
-                                    arguments: {'productId': productId},
-                                  );
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        'Edit produk: ${data['productName']}',
-                                      ),
-                                    ),
-                                  );
-                                },
-                                onDelete: () async {
-                                  await _firestoreService.deleteProduct(
-                                    productId,
-                                  );
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        '${data['productName']} berhasil dihapus',
-                                      ),
-                                    ),
-                                  );
-                                },
-                              );
-                            }).toList(),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 20),
-                  Center(
-                    child: ElevatedButton.icon(
-                      onPressed: () {
-                        Navigator.pushNamed(context, '/upload');
-                      },
-                      icon: const Icon(Icons.add),
-                      label: const Text("Tambah Produk Baru"),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: Colors.black,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          side: const BorderSide(color: Colors.grey),
-                        ),
+            // *** REFAKTOR DIMULAI DI SINI: StreamBuilder utama ***
+            StreamBuilder<QuerySnapshot>(
+              stream:
+                  currentUser != null
+                      ? _firestoreService.getOrdersForSeller(currentUser.uid)
+                      : null,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Padding(
+                    padding: EdgeInsets.all(32.0),
+                    child: Center(child: CircularProgressIndicator()),
+                  );
+                }
+                if (snapshot.hasError) {
+                  return Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Center(
+                      child: Text(
+                        'Error: ${snapshot.error}',
+                        style: TextStyle(color: Colors.red[700]),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  );
+                }
+
+                // Jika tidak ada data atau stream null
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return Column(
                     children: [
-                      OutlinedButton(
-                        onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                'Halaman Pesanan Masuk belum diimplementasikan',
-                              ),
-                            ),
-                          );
-                        },
-                        child: const Text("Pesanan Masuk"),
-                      ),
-                      OutlinedButton(
-                        onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                'Halaman Histori Pesanan belum diimplementasikan',
-                              ),
-                            ),
-                          );
-                        },
-                        child: const Text("Histori Pesanan"),
-                      ),
+                      _buildStatusSection(0), // Tampilkan status dengan count 0
+                      _buildIncomingOrders(
+                        currentUser,
+                        const [],
+                      ), // Tampilkan list pesanan kosong
+                      const SizedBox(height: 8),
+                      _buildStoreShowcase(
+                        currentUser,
+                        0,
+                      ), // Tampilkan etalase dengan revenue 0
                     ],
-                  ),
-                  const SizedBox(height: 20),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      'Total Pemasukan\nRp${_totalRevenue.toStringAsFixed(0)}',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                ],
-              ),
+                  );
+                }
+
+                // Jika ada data, proses di sini
+                final orders = snapshot.data!.docs;
+
+                // Hitung status "Perlu Dikirim"
+                final perluDikirimCount =
+                    orders.where((doc) {
+                      final data = doc.data() as Map<String, dynamic>;
+                      return data['status'] == 'Perlu Dikirim';
+                    }).length;
+
+                // Hitung total revenue dari semua pesanan yang ada
+                num totalRevenue = 0;
+                for (var orderDoc in orders) {
+                  final orderData = orderDoc.data() as Map<String, dynamic>;
+                  List<dynamic> items = orderData['items'] ?? [];
+                  for (var item in items) {
+                    if (item['sellerId'] == currentUser!.uid) {
+                      totalRevenue += (item['price'] * item['qty']) ?? 0;
+                    }
+                  }
+                }
+
+                // Kembalikan UI dengan data yang sudah diproses
+                return Column(
+                  children: [
+                    _buildStatusSection(perluDikirimCount),
+                    _buildIncomingOrders(currentUser, orders),
+                    const SizedBox(height: 8),
+                    _buildStoreShowcase(currentUser, totalRevenue),
+                  ],
+                );
+              },
             ),
           ],
         ),
       ),
     );
   }
+
+  // Widget baru untuk bagian Status Pesanan
+  Widget _buildStatusSection(int perluDikirimCount) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(
+          bottom: BorderSide(color: Color.fromARGB(255, 224, 224, 224)),
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _buildStatusItem(
+            perluDikirimCount.toString(),
+            'Perlu dikirim',
+          ), // Data dinamis
+          _buildStatusItem('0', 'Pembatalan'),
+          _buildStatusItem('0', 'Pengembalian'),
+          _buildStatusItem('0', 'Penilaian\nPerlu Dibalas'),
+        ],
+      ),
+    );
+  }
+
+  // Widget untuk Pesanan Masuk (sekarang menerima List<DocumentSnapshot>)
+  Widget _buildIncomingOrders(
+    User? currentUser,
+    List<DocumentSnapshot> orders,
+  ) {
+    if (currentUser == null) return const SizedBox.shrink();
+
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Pesanan Masuk',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          ),
+          const SizedBox(height: 10),
+          if (orders.isEmpty)
+            const Center(child: Text('Belum ada pesanan yang masuk.'))
+          else
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: orders.length,
+              itemBuilder: (context, index) {
+                final orderData = orders[index].data() as Map<String, dynamic>;
+                final itemsInOrder =
+                    (orderData['items'] as List)
+                        .map((item) => item as Map<String, dynamic>)
+                        .toList();
+                final sellerItems =
+                    itemsInOrder
+                        .where((item) => item['sellerId'] == currentUser.uid)
+                        .toList();
+
+                if (sellerItems.isEmpty) return const SizedBox.shrink();
+
+                return _OrderCard(
+                  orderData: orderData,
+                  sellerItems: sellerItems,
+                );
+              },
+            ),
+        ],
+      ),
+    );
+  }
+
+  // Widget untuk Etalase Toko (sekarang menerima totalRevenue)
+  Widget _buildStoreShowcase(User? currentUser, num totalRevenue) {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Etalase Toko',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          ),
+          const SizedBox(height: 16),
+          StreamBuilder<QuerySnapshot>(
+            stream:
+                currentUser != null
+                    ? _firestoreService.getProductsBySeller(currentUser.uid)
+                    : null,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (snapshot.hasError) {
+                return Center(child: Text('Error: ${snapshot.error}'));
+              }
+              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                return const Center(
+                  child: Text('Belum ada produk di etalase Anda.'),
+                );
+              }
+
+              return Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                alignment: WrapAlignment.start,
+                children:
+                    snapshot.data!.docs.map((document) {
+                      Map<String, dynamic> data =
+                          document.data() as Map<String, dynamic>;
+                      String productId = document.id;
+
+                      return _ProductItem(
+                        productId: productId,
+                        name: data['productName'] ?? 'Nama Produk',
+                        price: 'Rp ${data['price']?.toStringAsFixed(0) ?? '0'}',
+                        stock: (data['stock'] ?? 0).toString(),
+                        image:
+                            data['imageUrl'] ??
+                            'assets/images/product_placeholder.png',
+                        onTap:
+                            () => Navigator.pushNamed(
+                              context,
+                              '/detail_toko',
+                              arguments: {
+                                'productId': productId,
+                                'productName': data['productName'],
+                                'price': data['price']?.toStringAsFixed(0),
+                                'imageUrl': data['imageUrl'],
+                                'description': data['description'],
+                                'storeName': _storeName,
+                                'stock': data['stock']?.toString() ?? '0',
+                              },
+                            ),
+                        onEdit:
+                            () => Navigator.pushNamed(
+                              context,
+                              '/upload',
+                              arguments: {'productId': productId},
+                            ),
+                        onDelete: () async {
+                          await _firestoreService.deleteProduct(productId);
+                          if (mounted)
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  '${data['productName']} berhasil dihapus',
+                                ),
+                              ),
+                            );
+                        },
+                      );
+                    }).toList(),
+              );
+            },
+          ),
+          const SizedBox(height: 20),
+          Center(
+            child: ElevatedButton.icon(
+              onPressed: () => Navigator.pushNamed(context, '/upload'),
+              icon: const Icon(Icons.add),
+              label: const Text("Tambah Produk Baru"),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: Colors.black,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: const BorderSide(color: Colors.grey),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.green.shade50,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              'Total Pemasukan\nRp${totalRevenue.toStringAsFixed(0)}',
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF466147),
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
+// _ProductItem dan _OrderCard tetap sama, tidak perlu diubah.
+// (Salin dari kode sebelumnya)
+
 class _ProductItem extends StatelessWidget {
+  // ... (isi class _ProductItem tetap sama)
   final String productId;
   final String name;
   final String price;
@@ -417,10 +457,15 @@ class _ProductItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    double screenWidth = MediaQuery.of(context).size.width;
+    double containerPadding = 16.0 * 2;
+    double spacing = 12.0 * 2;
+    double itemWidth = (screenWidth - containerPadding - spacing) / 3;
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 110,
+        width: itemWidth,
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
           color: Colors.white,
@@ -435,31 +480,42 @@ class _ProductItem extends StatelessWidget {
         ),
         child: Column(
           children: [
-            // Gambar Produk
-            if (image.startsWith('http')) // Gambar dari URL
-              Image.network(
-                image,
-                height: 60,
-                fit: BoxFit.cover,
-                errorBuilder: _imageErrorBuilder,
-              )
-            else // Gambar dari asset (placeholder)
-              Image.asset(
-                image,
-                height: 60,
-                fit: BoxFit.cover,
-                errorBuilder: _imageErrorBuilder,
-              ),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child:
+                  image.startsWith('http')
+                      ? Image.network(
+                        image,
+                        height: 60,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                        errorBuilder: _imageErrorBuilder,
+                      )
+                      : Image.asset(
+                        image,
+                        height: 60,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                        errorBuilder: _imageErrorBuilder,
+                      ),
+            ),
             const SizedBox(height: 8),
             Text(
               name,
-              style: const TextStyle(fontWeight: FontWeight.bold),
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
               textAlign: TextAlign.center,
+              maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
-            Text(price, style: const TextStyle(color: Colors.black87)),
-            Text('Stok: $stock', style: const TextStyle(color: Colors.grey)),
-            // Opsi edit/hapus
+            Text(
+              price,
+              style: const TextStyle(color: Colors.black87, fontSize: 11),
+            ),
+            Text(
+              'Stok: $stock',
+              style: const TextStyle(color: Colors.grey, fontSize: 10),
+            ),
+            const SizedBox(height: 4),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -487,9 +543,99 @@ class _ProductItem extends StatelessWidget {
   ) {
     return Container(
       height: 60,
-      width: 60,
+      width: double.infinity,
       color: Colors.grey[300],
       child: const Icon(Icons.image, size: 30, color: Colors.grey),
+    );
+  }
+}
+
+class _OrderCard extends StatelessWidget {
+  // ... (isi class _OrderCard tetap sama)
+  final Map<String, dynamic> orderData;
+  final List<Map<String, dynamic>> sellerItems;
+
+  const _OrderCard({required this.orderData, required this.sellerItems});
+
+  @override
+  Widget build(BuildContext context) {
+    final double revenueFromThisOrder = sellerItems.fold(
+      0.0,
+      (sum, item) => sum + (item['price'] * item['qty']),
+    );
+    final timestamp = orderData['createdAt'] as Timestamp?;
+    final date = timestamp?.toDate();
+    final formattedDate =
+        date != null ? '${date.day}/${date.month}/${date.year}' : 'N/A';
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      elevation: 1,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: BorderSide(color: Colors.grey.shade300),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    'Pesanan dari: ${orderData['buyerName']}',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                Text(
+                  formattedDate,
+                  style: const TextStyle(color: Colors.grey, fontSize: 12),
+                ),
+              ],
+            ),
+            const Divider(),
+            ...sellerItems.map(
+              (item) => Padding(
+                padding: const EdgeInsets.symmetric(vertical: 2.0),
+                child: Text('• ${item['qty']}x ${item['name']}'),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Text(
+                'Pendapatan: Rp ${revenueFromThisOrder.toStringAsFixed(0)}',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.green,
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerRight,
+              child: OutlinedButton(
+                onPressed:
+                    () => ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'Fitur ubah status pesanan belum diimplementasikan.',
+                        ),
+                      ),
+                    ),
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(color: Colors.orange.shade700),
+                  foregroundColor: Colors.orange.shade700,
+                ),
+                child: Text('Status: ${orderData['status']}'),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

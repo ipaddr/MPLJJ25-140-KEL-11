@@ -2,7 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:panenplus/services/firestore_service.dart'; // Import FirestoreService
+import 'package:panenplus/services/firestore_service.dart';
 
 class CartScreen extends StatefulWidget {
   const CartScreen({super.key});
@@ -12,8 +12,7 @@ class CartScreen extends StatefulWidget {
 }
 
 class _CartScreenState extends State<CartScreen> {
-  final FirestoreService _firestoreService =
-      FirestoreService(); // Inisialisasi service
+  final FirestoreService _firestoreService = FirestoreService();
   String _customerName = 'Loading...';
   String _customerPhone = 'Loading...';
   String _customerAddress = 'Loading...';
@@ -33,12 +32,17 @@ class _CartScreenState extends State<CartScreen> {
         );
         if (userDoc.exists) {
           final userData = userDoc.data() as Map<String, dynamic>;
-          setState(() {
-            _customerName =
-                userData['username'] ?? currentUser.displayName ?? 'Pengguna';
-            _customerPhone = userData['phone'] ?? 'Tidak ada nomor telepon';
-            _customerAddress = userData['address'] ?? 'Tidak ada alamat';
-          });
+          if (mounted) {
+            setState(() {
+              _customerName =
+                  userData['username'] ??
+                  currentUser.displayName ??
+                  'Pengguna'; //
+              _customerPhone =
+                  userData['phone'] ?? 'Tidak ada nomor telepon'; //
+              _customerAddress = userData['address'] ?? 'Tidak ada alamat'; //
+            });
+          }
         }
       } catch (e) {
         if (mounted) {
@@ -50,10 +54,8 @@ class _CartScreenState extends State<CartScreen> {
     }
   }
 
-  // Fungsi untuk memperbarui kuantitas di Firestore
   void _updateQuantityInCart(
     String productId,
-    String cartItemId,
     int delta,
     int currentQty,
   ) async {
@@ -106,59 +108,28 @@ class _CartScreenState extends State<CartScreen> {
               bottom: 8.0,
             ),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 IconButton(
                   icon: const Icon(Icons.arrow_back, color: Colors.black),
                   onPressed: () => Navigator.pop(context),
                 ),
-                RichText(
-                  text: const TextSpan(
-                    children: [
-                      TextSpan(
-                        text: 'Panen',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 20,
-                          color: Colors.white,
-                        ),
-                      ),
-                      TextSpan(
-                        text: 'Plus',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 20,
-                          color: Colors.amber,
-                        ),
-                      ),
-                    ],
+                const Spacer(),
+                const Text(
+                  'Keranjang Belanja',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
                   ),
                 ),
                 const Spacer(),
-                IconButton(
-                  icon: const Icon(
-                    Icons.notifications_none,
-                    color: Colors.white,
-                  ),
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          'Halaman Notifikasi belum diimplementasikan!',
-                        ),
-                      ),
-                    );
-                  },
-                ),
               ],
             ),
           ),
         ),
       ),
       body: StreamBuilder<QuerySnapshot>(
-        stream: _firestoreService.getCartItems(
-          currentUser.uid,
-        ), // Ambil item keranjang dari Firestore
+        stream: _firestoreService.getCartItems(currentUser.uid),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -173,7 +144,6 @@ class _CartScreenState extends State<CartScreen> {
           List<Map<String, dynamic>> displayedItems =
               snapshot.data!.docs.map((doc) {
                 final data = doc.data() as Map<String, dynamic>;
-                data['cartItemId'] = doc.id; // Simpan ID dokumen keranjang
                 return data;
               }).toList();
 
@@ -184,7 +154,6 @@ class _CartScreenState extends State<CartScreen> {
 
           return Column(
             children: [
-              // Alamat Pengiriman
               Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Row(
@@ -202,7 +171,7 @@ class _CartScreenState extends State<CartScreen> {
                               fontWeight: FontWeight.bold,
                               fontSize: 16,
                             ),
-                          ),
+                          ), //
                           const SizedBox(height: 4),
                           Text(
                             _customerAddress,
@@ -212,31 +181,14 @@ class _CartScreenState extends State<CartScreen> {
                             ),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
-                          ),
+                          ), //
                         ],
-                      ),
-                    ),
-                    TextButton(
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              'Fitur edit alamat belum diimplementasikan!',
-                            ),
-                          ),
-                        );
-                      },
-                      child: const Text(
-                        'edit alamat',
-                        style: TextStyle(color: Colors.blue, fontSize: 13),
                       ),
                     ),
                   ],
                 ),
               ),
               const Divider(height: 0, thickness: 1, indent: 16, endIndent: 16),
-
-              // Daftar Produk di Keranjang
               Expanded(
                 child: ListView.builder(
                   padding: const EdgeInsets.all(16.0),
@@ -246,20 +198,17 @@ class _CartScreenState extends State<CartScreen> {
                     return _CartItemCard(
                       name: item['name']!,
                       image: item['image']!,
-                      price:
-                          (item['price'] as num).toDouble(), // Pastikan double
+                      price: (item['price'] as num).toDouble(),
                       qty: item['qty']!,
                       onAdd:
                           () => _updateQuantityInCart(
                             item['productId']!,
-                            item['cartItemId']!,
                             1,
                             item['qty']!,
                           ),
                       onRemove:
                           () => _updateQuantityInCart(
                             item['productId']!,
-                            item['cartItemId']!,
                             -1,
                             item['qty']!,
                           ),
@@ -267,8 +216,6 @@ class _CartScreenState extends State<CartScreen> {
                   },
                 ),
               ),
-
-              // Total dan Tombol "Buat Pesanan"
               Container(
                 padding: const EdgeInsets.all(16.0),
                 decoration: BoxDecoration(
@@ -309,12 +256,16 @@ class _CartScreenState extends State<CartScreen> {
                           );
                           return;
                         }
+                        // PENTING: Mengirim data yang dibutuhkan ke PaymentScreen
                         Navigator.pushNamed(
                           context,
                           '/payment',
                           arguments: {
                             'orderedItems': displayedItems,
                             'totalPrice': grandTotal,
+                            'customerName': _customerName, //
+                            'customerPhone': _customerPhone, //
+                            'customerAddress': _customerAddress, //
                           },
                         );
                       },
@@ -370,7 +321,6 @@ class _CartItemCard extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
@@ -404,11 +354,6 @@ class _CartItemCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  const Text(
-                    'dalam satuan kg',
-                    style: TextStyle(fontSize: 12, color: Colors.grey),
-                  ),
-                  const SizedBox(height: 8),
                   Text(
                     'Rp ${price.toStringAsFixed(0)}',
                     style: const TextStyle(
@@ -420,73 +365,34 @@ class _CartItemCard extends StatelessWidget {
                 ],
               ),
             ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Align(
-                  alignment: Alignment.topRight,
-                  child: IconButton(
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                    icon: const Icon(Icons.menu, size: 20, color: Colors.grey),
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Opsi lainnya untuk ${name}')),
-                      );
-                    },
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.grey[200],
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(
+                      Icons.remove,
+                      size: 20,
+                      color: Colors.green,
+                    ),
+                    onPressed: onRemove,
                   ),
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 4,
-                    vertical: 2,
+                  Text(
+                    '$qty',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
                   ),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[200],
-                    borderRadius: BorderRadius.circular(8),
+                  IconButton(
+                    icon: const Icon(Icons.add, size: 20, color: Colors.green),
+                    onPressed: onAdd,
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        icon: const Icon(
-                          Icons.remove,
-                          size: 20,
-                          color: Colors.green,
-                        ),
-                        onPressed: onRemove,
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        '$qty',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      IconButton(
-                        icon: const Icon(
-                          Icons.add,
-                          size: 20,
-                          color: Colors.green,
-                        ),
-                        onPressed: onAdd,
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Rp ${(price * qty).toStringAsFixed(0)}',
-                  style: const TextStyle(color: Colors.black, fontSize: 14),
-                ),
-              ],
+                ],
+              ),
             ),
           ],
         ),
