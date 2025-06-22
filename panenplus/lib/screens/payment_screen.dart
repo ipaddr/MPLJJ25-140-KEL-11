@@ -5,7 +5,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:panenplus/services/firestore_service.dart';
 
 class PaymentScreen extends StatefulWidget {
-  const PaymentScreen({super.key});
+  final Map<String, dynamic>? paymentData;
+  const PaymentScreen({super.key, this.paymentData});
 
   @override
   State<PaymentScreen> createState() => _PaymentScreenState();
@@ -16,43 +17,36 @@ class _PaymentScreenState extends State<PaymentScreen> {
   String? _selectedPaymentMethod;
   bool _isLoading = false;
 
-  List<Map<String, dynamic>> _receivedOrderedItems = []; //
-  num _receivedTotalPrice = 0; //
-  String _customerName = 'Loading...';
-  String _customerPhone = '...';
-  String _customerAddress = '...';
+  List<Map<String, dynamic>> _orderedItems = [];
+  num _totalPrice = 0;
+  String _customerName = '';
+  String _customerPhone = '';
+  String _customerAddress = '';
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final args =
-        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+  void initState() {
+    super.initState();
+    // Ambil data dari widget (constructor)
+    final args = widget.paymentData;
     if (args != null) {
-      if (mounted) {
-        setState(() {
-          _receivedOrderedItems = List<Map<String, dynamic>>.from(
-            args['orderedItems'] as List,
-          ); //
-          _receivedTotalPrice = args['totalPrice'] as num; //
-          _customerName = args['customerName'] ?? 'Tidak ada nama';
-          _customerPhone = args['customerPhone'] ?? 'Tidak ada telepon';
-          _customerAddress = args['customerAddress'] ?? 'Tidak ada alamat';
-        });
-      }
+      _orderedItems = List<Map<String, dynamic>>.from(
+        args['orderedItems'] as List,
+      );
+      _totalPrice = args['totalPrice'] as num;
+      _customerName = args['customerName'] ?? 'Tidak ada nama';
+      _customerPhone = args['customerPhone'] ?? 'Tidak ada telepon';
+      _customerAddress = args['customerAddress'] ?? 'Tidak ada alamat';
     }
   }
 
   Future<void> _processOrder() async {
     User? currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Anda harus login untuk membuat pesanan.'),
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Anda harus login.')));
       return;
     }
-
     if (_selectedPaymentMethod == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Silakan pilih metode pembayaran.')),
@@ -64,17 +58,16 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
     try {
       final sellerIds =
-          _receivedOrderedItems
+          _orderedItems
               .map((item) => item['sellerId'] as String)
               .toSet()
-              .toList(); //
-
+              .toList();
       Map<String, dynamic> orderData = {
         'buyerId': currentUser.uid,
         'buyerName': _customerName,
         'buyerAddress': _customerAddress,
         'buyerPhone': _customerPhone,
-        'items': _receivedOrderedItems, //
+        'items': _orderedItems,
         'sellerIdsInOrder': sellerIds,
         'grandTotal': _calculateGrandTotal(),
         'shippingCost': _calculateShippingCost(),
@@ -83,31 +76,30 @@ class _PaymentScreenState extends State<PaymentScreen> {
         'createdAt': FieldValue.serverTimestamp(),
       };
 
-      await _firestoreService.createOrder(orderData);
-      await _firestoreService.clearCart(currentUser.uid);
+      await _firestoreService.placeOrderAndUpdateStock(
+        orderData: orderData,
+        items: _orderedItems,
+        userId: currentUser.uid,
+      );
 
       if (mounted) {
         Navigator.of(
           context,
-        ).pushNamedAndRemoveUntil('/transaction_success', (route) => false); //
+        ).pushNamedAndRemoveUntil('/transaction_success', (route) => false);
       }
     } catch (e) {
-      if (mounted) {
+      if (mounted)
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('Gagal membuat pesanan: $e')));
-      }
     } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  num _calculateSubtotal() => _receivedTotalPrice; //
-  num _calculateShippingCost() => 15000; //
-  num _calculateGrandTotal() =>
-      _calculateSubtotal() + _calculateShippingCost(); //
+  num _calculateSubtotal() => _totalPrice;
+  num _calculateShippingCost() => 15000;
+  num _calculateGrandTotal() => _calculateSubtotal() + _calculateShippingCost();
 
   @override
   Widget build(BuildContext context) {
@@ -164,7 +156,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
             const Text(
               'Ringkasan Pesanan',
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ), //
+            ),
             const SizedBox(height: 10),
             Card(
               elevation: 2,
@@ -178,9 +170,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     ListView.builder(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
-                      itemCount: _receivedOrderedItems.length, //
+                      itemCount: _orderedItems.length,
                       itemBuilder: (context, index) {
-                        final item = _receivedOrderedItems[index]; //
+                        final item = _orderedItems[index];
                         return _PaymentOrderedItemCard(
                           name: item['name'] as String,
                           image: item['image'] as String,
@@ -193,17 +185,17 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     _buildSummaryRow(
                       'Subtotal',
                       'Rp ${_calculateSubtotal().toStringAsFixed(0)}',
-                    ), //
+                    ),
                     _buildSummaryRow(
                       'Biaya Pengiriman',
                       'Rp ${_calculateShippingCost().toStringAsFixed(0)}',
-                    ), //
+                    ),
                     const Divider(),
                     _buildSummaryRow(
                       'Total Pembayaran',
                       'Rp ${_calculateGrandTotal().toStringAsFixed(0)}',
                       isTotal: true,
-                    ), //
+                    ),
                   ],
                 ),
               ),
@@ -212,7 +204,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
             const Text(
               'Pilih Metode Pembayaran',
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ), //
+            ),
             const SizedBox(height: 10),
             Card(
               elevation: 2,
@@ -226,24 +218,21 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     value: 'bank_transfer',
                     groupValue: _selectedPaymentMethod,
                     onChanged:
-                        (value) =>
-                            setState(() => _selectedPaymentMethod = value),
+                        (v) => setState(() => _selectedPaymentMethod = v),
                   ),
                   RadioListTile<String>(
                     title: const Text('COD (Bayar di Tempat)'),
                     value: 'cod',
                     groupValue: _selectedPaymentMethod,
                     onChanged:
-                        (value) =>
-                            setState(() => _selectedPaymentMethod = value),
+                        (v) => setState(() => _selectedPaymentMethod = v),
                   ),
                   RadioListTile<String>(
                     title: const Text('Dana'),
                     value: 'dana',
                     groupValue: _selectedPaymentMethod,
                     onChanged:
-                        (value) =>
-                            setState(() => _selectedPaymentMethod = value),
+                        (v) => setState(() => _selectedPaymentMethod = v),
                   ),
                 ],
               ),
@@ -256,7 +245,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                       ? const Center(child: CircularProgressIndicator())
                       : ElevatedButton(
                         onPressed:
-                            _receivedOrderedItems.isEmpty ||
+                            _orderedItems.isEmpty ||
                                     _selectedPaymentMethod == null
                                 ? null
                                 : _processOrder,

@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:panenplus/services/firestore_service.dart';
-import '../screens/toko_saya_screen.dart';
 
 class AkunPage extends StatefulWidget {
   const AkunPage({super.key});
@@ -14,11 +13,8 @@ class AkunPage extends StatefulWidget {
 
 class _AkunScreenState extends State<AkunPage> {
   String _username = 'Loading...';
-  String _email = 'Loading...';
-  // String _phone = 'Loading...'; // Dihapus karena tidak digunakan di UI ini (sesuai peringatan)
   String _profileImageUrl = '';
-  String _storeDescription =
-      'Loading...'; // Tambahkan dan akan diisi dari Firestore
+  String _storeDescription = 'Pengguna PanenPlus';
   final FirestoreService _firestoreService = FirestoreService();
 
   @override
@@ -29,317 +25,255 @@ class _AkunScreenState extends State<AkunPage> {
 
   Future<void> _loadUserData() async {
     User? currentUser = FirebaseAuth.instance.currentUser;
-    // print('DEBUG: _loadUserData dipanggil.'); // Hapus print di produksi
-    if (currentUser != null) {
-      // print('DEBUG: User saat ini ada. UID: ${currentUser.uid}'); // Hapus print
-      try {
-        DocumentSnapshot userDoc = await _firestoreService.getUserData(
-          currentUser.uid,
-        );
-        // print('DEBUG: Dokumen user diambil dari Firestore.'); // Hapus print
-
-        if (userDoc.exists) {
-          // print('DEBUG: Dokumen user ditemukan di Firestore.'); // Hapus print
-          final userData = userDoc.data() as Map<String, dynamic>;
-          // print('DEBUG: Data user dari Firestore: $userData'); // Hapus print
-          setState(() {
-            _username =
-                userData['username'] ??
-                currentUser.displayName ??
-                'Pengguna PanenPlus';
-            _email =
-                userData['email'] ?? currentUser.email ?? 'Tidak ada email';
-            // _phone = userData['phone'] ?? 'Tidak ada nomor telepon'; // Baris ini tidak terpakai di UI Akun, jadi dihapus.
-            _profileImageUrl = userData['profileImageUrl'] ?? '';
-            _storeDescription =
-                userData['storeDescription'] ??
-                'Pengguna Aplikasi'; // Ambil deskripsi toko
-            // print('DEBUG: State diperbarui. Username: $_username'); // Hapus print
-          });
-        } else {
-          // print('DEBUG: Dokumen user TIDAK ditemukan di Firestore. Membuat dokumen baru...'); // Hapus print
-          await _firestoreService.saveNewUser(
-            currentUser.uid,
-            currentUser.displayName ?? '',
-            currentUser.email ?? '',
-            '', // Nomor telepon kosong
-          );
-          if (mounted) {
-            // print('DEBUG: Dokumen baru dibuat. Memanggil _loadUserData() lagi.'); // Hapus print
-            _loadUserData(); // Rekursif untuk me-reload data yang baru dibuat
-          }
-        }
-      } catch (e) {
-        // print('DEBUG: Error saat memuat data profil: $e'); // Hapus print
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Gagal memuat data profil: $e')),
-          );
-        }
+    if (currentUser == null) {
+      if (mounted) {
         setState(() {
-          _username = currentUser.displayName ?? 'Error';
-          _email = currentUser.email ?? 'Error';
-          // _phone = 'Error'; // Baris ini tidak terpakai di UI Akun, jadi dihapus.
-          _storeDescription = 'Error';
+          _username = 'Tamu';
+          _storeDescription = 'Silakan login';
         });
       }
-    } else {
-      // print('DEBUG: User belum login.'); // Hapus print
-      setState(() {
-        _username = 'Tamu';
-        _email = 'Silakan login';
-        // _phone = ''; // Baris ini tidak terpakai di UI Akun, jadi dihapus.
-        _storeDescription = '';
-      });
+      return;
     }
-  }
 
-  Widget _buildOrderItem(String title) {
-    return Expanded(
-      child: Column(
-        children: [
-          const Text(
-            "0", // Ini masih manual, butuh query ke koleksi orders
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-          ),
-          const SizedBox(height: 4),
-          Text(title, style: TextStyle(color: Colors.grey[600], fontSize: 12)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPromoCard(Color bgColor, String title, String desc) {
-    return Expanded(
-      child: InkWell(
-        onTap: () {
-          if (!mounted)
-            return; // Tambahkan cek mounted di awal scope yang menggunakan context
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Promo "$title" diklik!'),
-            ), // Perbaikan interpolasi string
-          );
-        },
-        borderRadius: BorderRadius.circular(8),
-        child: Container(
-          margin: const EdgeInsets.only(right: 8),
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: bgColor,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                  fontSize: 14,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                desc,
-                style: const TextStyle(color: Colors.white, fontSize: 12),
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+    try {
+      DocumentSnapshot userDoc = await _firestoreService.getUserData(
+        currentUser.uid,
+      );
+      if (userDoc.exists && mounted) {
+        final userData = userDoc.data() as Map<String, dynamic>;
+        setState(() {
+          _username =
+              userData['username'] ??
+              currentUser.displayName ??
+              'Pengguna PanenPlus';
+          _profileImageUrl = userData['profileImageUrl'] ?? '';
+          _storeDescription =
+              userData['storeDescription'] ?? 'Pengguna Aplikasi';
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Gagal memuat data profil: $e')));
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(100),
-        child: AppBar(
-          backgroundColor: const Color(0xFFCDE2C4),
-          elevation: 2,
-          automaticallyImplyLeading: false,
-          flexibleSpace: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 50, 16, 10),
-            child: Row(
+      backgroundColor: Colors.grey[100],
+      appBar: AppBar(
+        title: const Text('Akun Saya'),
+        centerTitle: true,
+        automaticallyImplyLeading: false,
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(16.0),
+        children: [
+          // --- KARTU PROFIL PENGGUNA ---
+          _buildProfileCard(),
+          const SizedBox(height: 16),
+
+          // --- MENU AKTIVITAS SAYA ---
+          const Text(
+            "Aktivitas Saya",
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.black54,
+            ),
+          ),
+          const SizedBox(height: 8),
+          _buildActivityMenu(),
+
+          // --- MENU PENGATURAN & BANTUAN ---
+          const SizedBox(height: 16),
+          const Text(
+            "Pengaturan & Bantuan",
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.black54,
+            ),
+          ),
+          const SizedBox(height: 8),
+          _buildSettingsMenu(),
+
+          const SizedBox(height: 24),
+
+          // --- TOMBOL LOGOUT ---
+          _buildLogoutButton(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProfileCard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(color: Colors.grey.withOpacity(0.1), blurRadius: 10),
+        ],
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 32,
+            backgroundColor: Colors.green.shade100,
+            backgroundImage:
+                _profileImageUrl.isNotEmpty
+                    ? NetworkImage(_profileImageUrl)
+                    : null,
+            child:
+                _profileImageUrl.isEmpty
+                    ? Icon(Icons.person, size: 32, color: Colors.green[800])
+                    : null,
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                RichText(
-                  text: const TextSpan(
-                    children: [
-                      TextSpan(
-                        text: 'Panen',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 20,
-                          color: Colors.white,
-                        ),
-                      ),
-                      TextSpan(
-                        text: 'Plus',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 20,
-                          color: Colors.amber,
-                        ),
-                      ),
-                    ],
+                Text(
+                  _username,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-                const Spacer(),
-                IconButton(
-                  icon: const Icon(
-                    Icons.notifications_none,
-                    color: Colors.white,
-                  ),
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          'Halaman Notifikasi belum diimplementasikan!',
-                        ),
-                      ),
-                    );
-                  },
+                const SizedBox(height: 4),
+                Text(
+                  _storeDescription,
+                  style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                 ),
               ],
             ),
           ),
-        ),
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          const Center(
-            child: Text(
-              'AKUN',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              // Tampilkan gambar profil dari Firestore atau ikon default
-              CircleAvatar(
-                radius: 20,
-                backgroundColor: Colors.green.shade100,
-                backgroundImage:
-                    _profileImageUrl.isNotEmpty
-                        ? NetworkImage(_profileImageUrl)
-                            as ImageProvider // Cast ke ImageProvider
-                        : null,
-                child:
-                    _profileImageUrl.isEmpty
-                        ? Icon(Icons.person, size: 28, color: Colors.green[800])
-                        : null,
-              ),
-              const SizedBox(width: 10),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _username, // Menampilkan username dari Firestore
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  Text(
-                    // INI PERBAIKANNYA: Menggunakan _storeDescription
-                    _storeDescription, // Menampilkan deskripsi toko/profil dari Firestore
-                    style: TextStyle(color: Colors.grey[600], fontSize: 12),
-                  ),
-                ],
-              ),
-              const Spacer(),
-              InkWell(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const TokoSayaScreen(),
-                    ),
-                  );
-                },
-                borderRadius: BorderRadius.circular(12),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFEDF6ED),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.favorite_border,
-                        color: Colors.green[900],
-                        size: 16,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        'Toko Saya',
-                        style: TextStyle(
-                          color: Colors.green[900],
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
+          IconButton(
+            onPressed: () {
+              // TODO: Arahkan ke halaman edit profil
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text("Halaman Ubah Profil belum dibuat."),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          const Text(
-            "Promo Hari Ini",
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 12),
-          const SizedBox(height: 24),
-          Row(
-            children: [
-              _buildPromoCard(
-                const Color(0xFFFFC8C8),
-                'PROMO\nPOTONGAN HARGA!',
-                'Cek selengkapnya untuk PROMO POTONGAN HARGA...',
-              ),
-              _buildPromoCard(
-                const Color(0xFFCDE2C4),
-                'PROMO\nGRATIS ONGKIR!',
-                'Cek selengkapnya untuk PROMO GRATIS ONGKIR...',
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          Center(
-            child: ElevatedButton(
-              onPressed: () async {
-                await FirebaseAuth.instance.signOut();
-                if (mounted) {
-                  Navigator.of(
-                    context,
-                  ).pushNamedAndRemoveUntil('/', (route) => false);
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 30,
-                  vertical: 10,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              child: const Text('Logout'),
-            ),
+              );
+            },
+            icon: Icon(Icons.edit_outlined, color: Colors.grey[700]),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildActivityMenu() {
+    return Card(
+      elevation: 2,
+      shadowColor: Colors.grey.withOpacity(0.2),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Column(
+        children: [
+          ListTile(
+            leading: Icon(
+              Icons.receipt_long_outlined,
+              color: Colors.blue.shade700,
+            ),
+            title: const Text("Riwayat Pesanan Saya"),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {
+              Navigator.pushNamed(context, '/order_history');
+            },
+          ),
+          const Divider(height: 1, indent: 16, endIndent: 16),
+          ListTile(
+            leading: const Icon(
+              Icons.storefront_outlined,
+              color: Color(0xFFF57C00),
+            ),
+            title: const Text("Toko Saya"),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {
+              Navigator.pushNamed(context, '/toko_saya');
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSettingsMenu() {
+    return Card(
+      elevation: 2,
+      shadowColor: Colors.grey.withOpacity(0.2),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Column(
+        children: [
+          ListTile(
+            leading: Icon(
+              Icons.chat_bubble_outline,
+              color: Colors.green.shade700,
+            ),
+            title: const Text("Pesan Masuk"),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {
+              Navigator.pushNamed(context, '/chat_list');
+            },
+          ),
+          const Divider(height: 1, indent: 16, endIndent: 16),
+          ListTile(
+            leading: Icon(
+              Icons.notifications_none,
+              color: Colors.purple.shade400,
+            ),
+            title: const Text("Notifikasi"),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {
+              Navigator.pushNamed(context, '/notifications');
+            },
+          ),
+          const Divider(height: 1, indent: 16, endIndent: 16),
+          ListTile(
+            leading: Icon(Icons.help_outline, color: Colors.grey.shade600),
+            title: const Text("Pusat Bantuan"),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text("Halaman Pusat Bantuan belum dibuat."),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLogoutButton() {
+    return Center(
+      child: ElevatedButton.icon(
+        icon: const Icon(Icons.logout, color: Colors.white),
+        label: const Text('Logout'),
+        onPressed: () async {
+          await FirebaseAuth.instance.signOut();
+          if (mounted) {
+            Navigator.of(
+              context,
+            ).pushNamedAndRemoveUntil('/', (route) => false);
+          }
+        },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.redAccent,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
       ),
     );
   }

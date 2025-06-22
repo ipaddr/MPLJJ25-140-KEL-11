@@ -33,7 +33,7 @@ class HomeScreen extends StatelessWidget {
                     children: [
                       Image.asset(
                         'assets/logo.png',
-                        height: 35,
+                        height: 100,
                         errorBuilder:
                             (context, error, stackTrace) => const Text(
                               'PanenPlus',

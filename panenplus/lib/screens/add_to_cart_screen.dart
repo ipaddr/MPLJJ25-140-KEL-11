@@ -4,7 +4,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:panenplus/services/firestore_service.dart';
 
 class AddToCartScreen extends StatefulWidget {
-  const AddToCartScreen({super.key});
+  // 1. Tambahkan properti untuk menerima data
+  final Map<String, dynamic>? productData;
+  // 2. Modifikasi constructor untuk menerima data
+  const AddToCartScreen({super.key, this.productData});
 
   @override
   State<AddToCartScreen> createState() => _AddToCartScreenState();
@@ -37,20 +40,17 @@ class _AddToCartScreenState extends State<AddToCartScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Anda harus login untuk menambahkan ke keranjang.'),
-            duration: Duration(seconds: 2), // Durasi lebih lama
           ),
         );
       }
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
 
     try {
-      final Map<String, dynamic>? product =
-          ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+      // 3. Ambil data dari WIDGET, bukan ModalRoute
+      final Map<String, dynamic>? product = widget.productData;
 
       if (product == null) {
         if (mounted) {
@@ -58,10 +58,10 @@ class _AddToCartScreenState extends State<AddToCartScreen> {
             const SnackBar(content: Text('Produk tidak ditemukan.')),
           );
         }
+        setState(() => _isLoading = false);
         return;
       }
 
-      // Pastikan parsedPrice aman
       final double parsedPrice =
           double.tryParse(
             product['price']
@@ -71,21 +71,20 @@ class _AddToCartScreenState extends State<AddToCartScreen> {
           ) ??
           0.0;
 
-      // Buat item keranjang
       Map<String, dynamic> cartItem = {
-        'productId': product['productId'], // ID produk dari Firestore
+        'productId': product['productId'],
         'name': product['name'],
         'price': parsedPrice,
         'image': product['image'],
         'qty': _quantity,
         'notes': _notesController.text.trim(),
-        'sellerId': product['sellerId'], // ID penjual
-        'sellerName': product['sellerName'], // Nama penjual
+        'sellerId': product['sellerId'],
+        'sellerName': product['sellerName'],
       };
 
       await _firestoreService.updateCartItem(
         currentUser.uid,
-        product['productId'], // Menggunakan productId sebagai document ID di sub-koleksi cart
+        product['productId'],
         cartItem,
       );
 
@@ -95,32 +94,22 @@ class _AddToCartScreenState extends State<AddToCartScreen> {
             content: Text(
               '$_quantity ${product['name']} ditambahkan ke keranjang!',
             ),
-            duration: const Duration(
-              seconds: 2,
-            ), // Tampilkan SnackBar lebih lama
           ),
         );
-        // Tambahkan jeda singkat sebelum pop agar pengguna sempat membaca SnackBar
         await Future.delayed(const Duration(milliseconds: 500));
         if (mounted) {
-          Navigator.pop(context); // Kembali ke MartScreen
+          Navigator.pop(context);
         }
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Gagal menambahkan ke keranjang: $e'),
-            duration: const Duration(seconds: 3), // Durasi error lebih lama
-          ),
+          SnackBar(content: Text('Gagal menambahkan ke keranjang: $e')),
         );
       }
     } finally {
       if (mounted) {
-        // Pastikan mounted sebelum setState di finally
-        setState(() {
-          _isLoading = false;
-        });
+        setState(() => _isLoading = false);
       }
     }
   }
@@ -133,8 +122,8 @@ class _AddToCartScreenState extends State<AddToCartScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final Map<String, dynamic>? product =
-        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+    // 4. Ambil data dari WIDGET, bukan ModalRoute
+    final Map<String, dynamic>? product = widget.productData;
 
     if (product == null) {
       return Scaffold(
@@ -144,23 +133,24 @@ class _AddToCartScreenState extends State<AddToCartScreen> {
     }
 
     final String productName = product['name'] ?? 'Produk Tidak Dikenal';
-    final String productPrice = product['price'] ?? '0';
+    // Ambil harga dari argumen, pastikan tipenya benar (String atau num)
+    final String productPriceString = product['price']?.toString() ?? '0';
     final String productImage =
         product['image'] ?? 'assets/images/product_placeholder.png';
-    // Hati-hati dengan parsing harga jika formatnya "Rp 10.000,00"
+
     final double parsedPrice =
         double.tryParse(
-          productPrice
-              .replaceAll('Rp ', '')
-              .replaceAll('.', '')
-              .replaceAll(',', '.'),
+          productPriceString.replaceAll(
+            RegExp(r'[^0-9]'),
+            '',
+          ), // Hanya ambil angka
         ) ??
-        0.0; // Mengganti koma jadi titik untuk parsing
+        0.0;
     final num currentTotal = parsedPrice * _quantity;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Detail Pesanan'),
+        title: const Text('Tambah ke Keranjang'),
         backgroundColor: const Color(0xffC5DDBF),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black),
@@ -172,7 +162,6 @@ class _AddToCartScreenState extends State<AddToCartScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Informasi Produk
             Row(
               children: [
                 ClipRRect(
@@ -184,34 +173,12 @@ class _AddToCartScreenState extends State<AddToCartScreen> {
                             width: 100,
                             height: 100,
                             fit: BoxFit.cover,
-                            errorBuilder:
-                                (context, error, stackTrace) => Container(
-                                  color: Colors.grey[300],
-                                  width: 100,
-                                  height: 100,
-                                  child: const Icon(
-                                    Icons.image,
-                                    size: 50,
-                                    color: Colors.grey,
-                                  ),
-                                ),
                           )
                           : Image.asset(
                             productImage,
                             width: 100,
                             height: 100,
                             fit: BoxFit.cover,
-                            errorBuilder:
-                                (context, error, stackTrace) => Container(
-                                  color: Colors.grey[300],
-                                  width: 100,
-                                  height: 100,
-                                  child: const Icon(
-                                    Icons.image,
-                                    size: 50,
-                                    color: Colors.grey,
-                                  ),
-                                ),
                           ),
                 ),
                 const SizedBox(width: 16),
@@ -228,32 +195,27 @@ class _AddToCartScreenState extends State<AddToCartScreen> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Rp ${productPrice}',
+                        'Rp ${parsedPrice.toStringAsFixed(0)}',
                         style: const TextStyle(
                           fontSize: 18,
                           color: Colors.green,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const Text(
-                        'dalam satuan kg',
-                        style: TextStyle(fontSize: 14),
-                      ),
+                      const Text('per satuan', style: TextStyle(fontSize: 14)),
                     ],
                   ),
                 ),
               ],
             ),
             const Divider(height: 30, thickness: 1),
-
-            // Bagian Kuantitas
-            const Text(
-              'Kuantitas:',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 10),
             Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
+                const Text(
+                  'Kuantitas',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
                 Container(
                   decoration: BoxDecoration(
                     color: Colors.grey[200],
@@ -279,18 +241,11 @@ class _AddToCartScreenState extends State<AddToCartScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(width: 20),
-                Text(
-                  'Total untuk item ini: Rp ${currentTotal.toStringAsFixed(0)}',
-                  style: const TextStyle(fontSize: 16, color: Colors.green),
-                ),
               ],
             ),
             const SizedBox(height: 24),
-
-            // Catatan Pesanan
             const Text(
-              'Catatan Tambahan (opsional):',
+              'Catatan (Opsional)',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 10),
@@ -306,34 +261,32 @@ class _AddToCartScreenState extends State<AddToCartScreen> {
                 fillColor: Colors.grey[50],
               ),
             ),
-            const SizedBox(height: 30),
-
-            // Tombol "Tambah ke Keranjang"
+          ],
+        ),
+      ),
+      bottomNavigationBar: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child:
             _isLoading
                 ? const Center(child: CircularProgressIndicator())
-                : SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: _addToCart, // Panggil fungsi _addToCart
-                    icon: const Icon(
-                      Icons.add_shopping_cart,
-                      color: Colors.white,
-                    ),
-                    label: const Text(
-                      'Tambah ke Keranjang',
-                      style: TextStyle(fontSize: 18, color: Colors.white),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green[800],
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+                : ElevatedButton.icon(
+                  onPressed: _addToCart,
+                  icon: const Icon(
+                    Icons.add_shopping_cart,
+                    color: Colors.white,
+                  ),
+                  label: Text(
+                    'Tambah Keranjang - Rp ${currentTotal.toStringAsFixed(0)}',
+                    style: const TextStyle(fontSize: 18, color: Colors.white),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green[800],
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
                   ),
                 ),
-          ],
-        ),
       ),
     );
   }

@@ -1,23 +1,65 @@
 // lib/services/firestore_service.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'dart:io'; // Untuk tipe File dari mobile
 import 'dart:typed_data'; // Untuk tipe Uint8List dari web
+import 'package:http/http.dart' as http; // Import paket http
+import 'dart:convert'; // Import untuk json.decode
 
 class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseStorage _storage = FirebaseStorage.instance;
 
-  // Mendapatkan ID pengguna saat ini
-  String? getCurrentUserId() {
-    return _auth.currentUser?.uid;
+  Future<String> uploadImage({
+    File? mobileFile,
+    Uint8List? webBytes,
+    String? fileName,
+  }) async {
+    const String cloudName = 'dkkfsrir6';
+    const String uploadPreset = 'panenplus';
+
+    final uri = Uri.parse(
+      'https://api.cloudinary.com/v1_1/$cloudName/image/upload',
+    );
+    final request = http.MultipartRequest('POST', uri)
+      ..fields['upload_preset'] = uploadPreset;
+
+    if (webBytes != null && fileName != null) {
+      request.files.add(
+        http.MultipartFile.fromBytes('file', webBytes, filename: fileName),
+      );
+    } else if (mobileFile != null) {
+      request.files.add(
+        await http.MultipartFile.fromPath('file', mobileFile.path),
+      );
+    } else {
+      throw Exception('Tidak ada file atau data gambar yang diberikan.');
+    }
+    try {
+      final response = await request.send();
+      if (response.statusCode == 200) {
+        final responseData = await response.stream.toBytes();
+        final responseString = String.fromCharCodes(responseData);
+        final jsonMap = json.decode(responseString);
+        return jsonMap['secure_url'];
+      } else {
+        final respStr = await response.stream.bytesToString();
+        print('Gagal upload, body: $respStr');
+        throw Exception(
+          'Gagal mengunggah gambar. Status: ${response.statusCode}',
+        );
+      }
+    } catch (e) {
+      throw Exception('Gagal mengunggah gambar: $e');
+    }
   }
 
   // --- Operasi Pengguna (Users) ---
 
-  // Menyimpan data pengguna baru setelah registrasi
+  String? getCurrentUserId() {
+    return _auth.currentUser?.uid;
+  }
+
   Future<void> saveNewUser(
     String uid,
     String username,
@@ -30,46 +72,22 @@ class FirestoreService {
       'email': email,
       'phone': phone,
       'createdAt': Timestamp.now(),
-      'storeDescription': 'Pengguna PanenPlus', // Deskripsi default
-      'profileImageUrl': '', // URL gambar profil default kosong
-      'address': '', // Alamat default kosong
+      'storeDescription': 'Pengguna PanenPlus',
+      'profileImageUrl': '',
+      'address': '',
     });
   }
 
-  // Mendapatkan data profil pengguna berdasarkan UID
   Future<DocumentSnapshot> getUserData(String uid) {
     return _db.collection('users').doc(uid).get();
   }
 
-  // Memperbarui data profil pengguna
   Future<void> updateUserData(String uid, Map<String, dynamic> data) async {
     await _db.collection('users').doc(uid).update(data);
   }
 
   // --- Operasi Produk (Products) ---
 
-  // Mengunggah gambar untuk MOBILE (menerima File)
-  Future<String> uploadProductImage(File imageFile) async {
-    String fileName =
-        'product_images/${DateTime.now().millisecondsSinceEpoch}_${imageFile.path.split('/').last}';
-    UploadTask uploadTask = _storage.ref().child(fileName).putFile(imageFile);
-    TaskSnapshot snapshot = await uploadTask;
-    return await snapshot.ref.getDownloadURL();
-  }
-
-  // Mengunggah gambar untuk WEB (menerima Uint8List)
-  Future<String> uploadProductImageBytes(
-    Uint8List imageBytes,
-    String fileName,
-  ) async {
-    String filePath =
-        'product_images/${DateTime.now().millisecondsSinceEpoch}_$fileName';
-    UploadTask uploadTask = _storage.ref().child(filePath).putData(imageBytes);
-    TaskSnapshot snapshot = await uploadTask;
-    return await snapshot.ref.getDownloadURL();
-  }
-
-  // Menambahkan produk baru
   Future<void> addProduct({
     required String productName,
     required double price,
@@ -93,7 +111,6 @@ class FirestoreService {
     });
   }
 
-  // Mendapatkan semua produk
   Stream<QuerySnapshot> getProducts() {
     return _db
         .collection('products')
@@ -101,7 +118,6 @@ class FirestoreService {
         .snapshots();
   }
 
-  // Mendapatkan produk berdasarkan sellerId (untuk Toko Saya)
   Stream<QuerySnapshot> getProductsBySeller(String sellerId) {
     return _db
         .collection('products')
@@ -109,12 +125,10 @@ class FirestoreService {
         .snapshots();
   }
 
-  // Mendapatkan detail produk tunggal
   Future<DocumentSnapshot> getProductDetails(String productId) {
     return _db.collection('products').doc(productId).get();
   }
 
-  // Memperbarui produk
   Future<void> updateProduct(
     String productId,
     Map<String, dynamic> data,
@@ -122,14 +136,12 @@ class FirestoreService {
     await _db.collection('products').doc(productId).update(data);
   }
 
-  // Menghapus produk
   Future<void> deleteProduct(String productId) async {
     await _db.collection('products').doc(productId).delete();
   }
 
   // --- Operasi Keranjang (Cart) ---
 
-  // Menambahkan/memperbarui item di keranjang pengguna
   Future<void> updateCartItem(
     String userId,
     String productId,
@@ -143,12 +155,10 @@ class FirestoreService {
         .set(itemData, SetOptions(merge: true));
   }
 
-  // Mendapatkan item keranjang pengguna
   Stream<QuerySnapshot> getCartItems(String userId) {
     return _db.collection('users').doc(userId).collection('cart').snapshots();
   }
 
-  // Menghapus item dari keranjang
   Future<void> removeCartItem(String userId, String productId) async {
     await _db
         .collection('users')
@@ -160,24 +170,35 @@ class FirestoreService {
 
   // --- Operasi Pesanan (Orders) & Logika Terkait ---
 
-  // Membuat pesanan baru
-  Future<void> createOrder(Map<String, dynamic> orderData) async {
-    await _db.collection('orders').add(orderData);
-  }
+  Future<void> placeOrderAndUpdateStock({
+    required Map<String, dynamic> orderData,
+    required List<Map<String, dynamic>> items,
+    required String userId,
+  }) async {
+    final batch = _db.batch();
+    final orderRef = _db.collection('orders').doc();
+    batch.set(orderRef, orderData);
 
-  // Mengosongkan keranjang setelah pesanan dibuat (Versi Efisien)
-  Future<void> clearCart(String userId) async {
-    QuerySnapshot cartSnapshot =
+    for (var item in items) {
+      final productRef = _db.collection('products').doc(item['productId']);
+      final quantityToDecrease = -item['qty'];
+      batch.update(productRef, {
+        'stock': FieldValue.increment(quantityToDecrease),
+      });
+    }
+
+    final cartItemsSnapshot =
         await _db.collection('users').doc(userId).collection('cart').get();
-
-    WriteBatch batch = _db.batch();
-    for (DocumentSnapshot doc in cartSnapshot.docs) {
+    for (var doc in cartItemsSnapshot.docs) {
       batch.delete(doc.reference);
     }
     await batch.commit();
   }
 
-  // Mendapatkan semua pesanan milik seorang pengguna (pembeli)
+  Future<void> updateOrderStatus(String orderId, String newStatus) async {
+    await _db.collection('orders').doc(orderId).update({'status': newStatus});
+  }
+
   Stream<QuerySnapshot> getUserOrders(String userId) {
     return _db
         .collection('orders')
@@ -186,7 +207,6 @@ class FirestoreService {
         .snapshots();
   }
 
-  // Mendapatkan pesanan untuk penjual tertentu
   Stream<QuerySnapshot> getOrdersForSeller(String sellerId) {
     return _db
         .collection('orders')
@@ -195,9 +215,8 @@ class FirestoreService {
         .snapshots();
   }
 
-  // --- Operasi Chat (KODE BARU DITAMBAHKAN DI SINI) ---
+  // --- Operasi Chat ---
 
-  // Membuat ID chat yang konsisten antara dua pengguna
   String getChatId(String userId1, String userId2) {
     if (userId1.hashCode <= userId2.hashCode) {
       return '$userId1-$userId2';
@@ -206,28 +225,22 @@ class FirestoreService {
     }
   }
 
-  // Mengirim pesan baru dan mengupdate data percakapan
   Future<void> sendMessage(
     String chatId,
     Map<String, dynamic> messageData,
     Map<String, dynamic> chatData,
   ) async {
-    // Tambahkan pesan ke sub-koleksi messages
     await _db
         .collection('chats')
         .doc(chatId)
         .collection('messages')
         .add(messageData);
-
-    // Update data percakapan utama (lastMessage, dll)
-    // set dengan merge:true akan membuat dokumen jika belum ada, atau update jika sudah ada
     await _db
         .collection('chats')
         .doc(chatId)
         .set(chatData, SetOptions(merge: true));
   }
 
-  // Mendapatkan stream/aliran pesan dari sebuah percakapan
   Stream<QuerySnapshot> getChatMessages(String chatId) {
     return _db
         .collection('chats')
@@ -237,12 +250,49 @@ class FirestoreService {
         .snapshots();
   }
 
-  // Mendapatkan semua percakapan yang dimiliki seorang pengguna
   Stream<QuerySnapshot> getUserChats(String userId) {
     return _db
         .collection('chats')
         .where('users', arrayContains: userId)
         .orderBy('lastMessageTimestamp', descending: true)
         .snapshots();
+  }
+
+  // *** PENAMBAHAN FUNGSI NOTIFIKASI DI SINI ***
+  // --- Operasi Notifikasi ---
+
+  // Menambahkan notifikasi baru untuk pengguna
+  Future<void> addNotification(
+    String userId,
+    Map<String, dynamic> notificationData,
+  ) async {
+    await _db
+        .collection('users')
+        .doc(userId)
+        .collection('notifications')
+        .add(notificationData);
+  }
+
+  // Mengambil semua notifikasi milik pengguna
+  Stream<QuerySnapshot> getUserNotifications(String userId) {
+    return _db
+        .collection('users')
+        .doc(userId)
+        .collection('notifications')
+        .orderBy('timestamp', descending: true)
+        .snapshots();
+  }
+
+  // Menandai notifikasi sebagai sudah dibaca
+  Future<void> markNotificationAsRead(
+    String userId,
+    String notificationId,
+  ) async {
+    await _db
+        .collection('users')
+        .doc(userId)
+        .collection('notifications')
+        .doc(notificationId)
+        .update({'isRead': true});
   }
 }
