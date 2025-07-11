@@ -116,7 +116,7 @@ class _TokoSayaScreenState extends State<TokoSayaScreen> {
                                   (doc) =>
                                       (doc.data()
                                           as Map<String, dynamic>)['status'] ==
-                                      'Perlu Dikirim',
+                                      'Diproses',
                                 )
                                 .length;
                         final dikirimCount =
@@ -255,7 +255,7 @@ class _TokoSayaScreenState extends State<TokoSayaScreen> {
               _buildStatusCard(
                 icon: Icons.outbox_outlined,
                 count: perluDikirim,
-                label: 'Perlu Dikirim',
+                label: 'Diproses',
               ),
               _buildStatusCard(
                 icon: Icons.local_shipping_outlined,

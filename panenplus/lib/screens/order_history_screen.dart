@@ -3,10 +3,25 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:panenplus/services/firestore_service.dart';
-import 'package:intl/intl.dart'; // Paket untuk format tanggal
+import 'package:intl/intl.dart';
 
 class OrderHistoryScreen extends StatelessWidget {
   const OrderHistoryScreen({super.key});
+
+  Color _getStatusColor(String status) {
+    switch (status) {
+      case 'Dikirim':
+        return Colors.blue.shade700;
+      case 'Selesai':
+        return Colors.green.shade700;
+      case 'Dibatalkan':
+        return Colors.red.shade700;
+      case 'Diproses':
+        return Colors.orange.shade800;
+      default:
+        return Colors.grey.shade600;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -28,7 +43,7 @@ class OrderHistoryScreen extends StatelessWidget {
                   }
                   if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                     return const Center(
-                      child: Text("Anda belum memiliki pesanan."),
+                      child: Text("Anda belum memiliki riwayat pesanan."),
                     );
                   }
                   if (snapshot.hasError) {
@@ -41,8 +56,8 @@ class OrderHistoryScreen extends StatelessWidget {
                     padding: const EdgeInsets.all(8.0),
                     itemCount: orders.length,
                     itemBuilder: (context, index) {
-                      final order =
-                          orders[index].data() as Map<String, dynamic>;
+                      final orderDoc = orders[index];
+                      final order = orderDoc.data() as Map<String, dynamic>;
                       final items =
                           (order['items'] as List).cast<Map<String, dynamic>>();
                       final timestamp =
@@ -53,6 +68,9 @@ class OrderHistoryScreen extends StatelessWidget {
                                 'd MMMM yyyy, HH:mm',
                               ).format(timestamp)
                               : 'N/A';
+
+                      final displayStatus = order['status'] ?? 'N/A';
+                      final statusColor = _getStatusColor(displayStatus);
 
                       return Card(
                         margin: const EdgeInsets.symmetric(
@@ -73,7 +91,7 @@ class OrderHistoryScreen extends StatelessWidget {
                                     MainAxisAlignment.spaceBetween,
                                 children: [
                                   Text(
-                                    'Pesanan #${orders[index].id.substring(0, 8)}',
+                                    'Pesanan #${orderDoc.id.substring(0, 8)}',
                                     style: const TextStyle(
                                       fontWeight: FontWeight.bold,
                                       fontSize: 16,
@@ -81,17 +99,17 @@ class OrderHistoryScreen extends StatelessWidget {
                                   ),
                                   Container(
                                     padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 4,
+                                      horizontal: 10,
+                                      vertical: 5,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: Colors.green.shade100,
+                                      color: statusColor.withOpacity(0.1),
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                     child: Text(
-                                      order['status'] ?? 'N/A',
+                                      displayStatus,
                                       style: TextStyle(
-                                        color: Colors.green.shade800,
+                                        color: statusColor,
                                         fontWeight: FontWeight.bold,
                                         fontSize: 12,
                                       ),
@@ -104,8 +122,12 @@ class OrderHistoryScreen extends StatelessWidget {
                               Text(
                                 'Total: Rp ${order['grandTotal'].toStringAsFixed(0)}',
                               ),
-                              const SizedBox(height: 8),
-                              Text('Item:'),
+                              const SizedBox(height: 12),
+                              Text(
+                                'Item Dibeli:',
+                                style: TextStyle(color: Colors.grey[700]),
+                              ),
+                              const SizedBox(height: 4),
                               ...items
                                   .map(
                                     (item) => Text(
@@ -113,6 +135,54 @@ class OrderHistoryScreen extends StatelessWidget {
                                     ),
                                   )
                                   .toList(),
+
+                              if (order['status'] == 'Dikirim') ...[
+                                const SizedBox(height: 16),
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: ElevatedButton.icon(
+                                    icon: const Icon(
+                                      Icons.check_circle_outline,
+                                      size: 18,
+                                    ),
+                                    label: const Text("Pesanan Sudah Diterima"),
+                                    onPressed: () {
+                                      firestoreService
+                                          .updateOrderStatus(
+                                            orderDoc.id,
+                                            'Selesai',
+                                          )
+                                          .then(
+                                            (_) => ScaffoldMessenger.of(
+                                              context,
+                                            ).showSnackBar(
+                                              const SnackBar(
+                                                content: Text(
+                                                  "Terima kasih telah mengonfirmasi pesanan!",
+                                                ),
+                                              ),
+                                            ),
+                                          )
+                                          .catchError(
+                                            (e) => ScaffoldMessenger.of(
+                                              context,
+                                            ).showSnackBar(
+                                              SnackBar(
+                                                content: Text("Gagal: $e"),
+                                              ),
+                                            ),
+                                          );
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.blue[700],
+                                      foregroundColor: Colors.white,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ],
                           ),
                         ),
